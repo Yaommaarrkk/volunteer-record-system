@@ -1,12 +1,15 @@
 {
   "workspace": {
     "packages": {
-      "volunteer-record-system": {
+      "volunteer-record-system-frontend": {
         "path": "./",
         "core": {
           "dependencies": [
+            "arrays",
             "console",
+            "datetime",
             "effect",
+            "foldable-traversable",
             "halogen",
             "prelude"
           ]

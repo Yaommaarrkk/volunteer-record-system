@@ -1,8 +1,11 @@
 package:
   name: volunteer-record-system-frontend
   dependencies:
+    - arrays
     - console
+    - datetime
     - effect
+    - foldable-traversable
     - halogen
     - prelude
   test:

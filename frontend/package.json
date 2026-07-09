@@ -1,10 +1,13 @@
 {
   "scripts": {
-    "build": "spago build && esbuild entry.js --bundle --outfile=dist/bundle.js --platform=browser --format=iife",
-    "build:direct": "purs compile --output output \".spago/p/*/src/**/*.purs\" \"src/**/*.purs\" && esbuild entry.js --bundle --outfile=dist/bundle.js --platform=browser --format=iife",
+    "build": "purs compile --output output \".spago/p/*/src/**/*.purs\" \"src/**/*.purs\" && esbuild entry.js --bundle --outfile=dist/bundle.js --platform=browser --format=iife",
+    "build:direct": "npm run build",
+    "build:spago": "spago build && esbuild entry.js --bundle --outfile=dist/bundle.js --platform=browser --format=iife",
+    "format": "node scripts/format-purs.js",
     "serve": "npx serve ."
   },
-  "dependencies": {
+  "devDependencies": {
+    "esbuild": "^0.28.1",
     "purty": "^7.0.0"
   }
 }
