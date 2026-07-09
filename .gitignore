@@ -1,0 +1,10 @@
+target/
+build/
+.gradle/
+.idea/
+.vscode/
+*.iml
+*.log
+.env
+.DS_Store
+node_modules/
