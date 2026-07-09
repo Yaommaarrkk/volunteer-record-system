@@ -4,6 +4,7 @@
 
 - [ ] 建立 Spring Boot 專案
 - [ ] 設定 Neon PostgreSQL 連線
+- [ ] 建立 PureScript + Halogen 前端專案
 - [ ] 建立基本資料模型
 
 ## Phase 2 - 基本功能
@@ -15,6 +16,7 @@
 
 ## Phase 3 - 前端頁面
 
+- [ ] 建立 Halogen 共用版面與路由架構
 - [ ] 製作 /master-data 頁面
 - [ ] 製作 /records 頁面
 - [ ] 製作 /summary 頁面

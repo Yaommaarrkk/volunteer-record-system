@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "build": "spago build && esbuild entry.js --bundle --outfile=dist/bundle.js --platform=browser --format=iife",
+    "build:direct": "purs compile --output output \".spago/p/*/src/**/*.purs\" \"src/**/*.purs\" && esbuild entry.js --bundle --outfile=dist/bundle.js --platform=browser --format=iife",
+    "serve": "npx serve ."
+  },
+  "dependencies": {
+    "purty": "^7.0.0"
+  }
+}

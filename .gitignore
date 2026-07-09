@@ -8,3 +8,11 @@ build/
 .env
 .DS_Store
 node_modules/
+output/
+.spago/
+.psc-ide-port
+.purs-repl
+frontend/output/
+frontend/dist/
+frontend/.spago/
+frontend/drafts/

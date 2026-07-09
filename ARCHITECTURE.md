@@ -4,7 +4,7 @@
 
 ### 前端
 
-- 以 Web 頁面為主
+- 使用 PureScript + Halogen 建立 Web 前端
 - 三個主要頁面：/master-data、/records、/summary
 - 使用簡單的列表、表單、勾選框與排序操作流程
 

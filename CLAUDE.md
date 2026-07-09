@@ -4,7 +4,7 @@
 
 - 後端使用 Java + Spring Boot
 - 資料庫使用 Neon 的 PostgreSQL
-- 前端先做 Web，路由包含 /master-data、/records 與 /summary
+- 前端使用 PureScript + Halogen，路由包含 /master-data、/records 與 /summary
 - 先聚焦在簡單且實用的功能，不要做過度複雜的權限與流程
 - 主要流程：管理學生、管理活動模板、批次建立時數紀錄、顯示學生資料總覽
 
