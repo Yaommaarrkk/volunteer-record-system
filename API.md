@@ -8,6 +8,11 @@
 - POST /api/students
 - DELETE /api/students/{id}
 
+### 學生總覽
+
+- GET /api/students/summary
+- 可支援查詢參數：sort=grade|hours、category=服務
+
 ### 活動模板
 
 - GET /api/activity-templates
@@ -26,7 +31,7 @@
 ```json
 {
   "name": "王小明",
-  "age": "9"
+  "age": 9
 }
 ```
 
@@ -51,4 +56,20 @@
   "hours": 2.5,
   "note": "本次活動"
 }
+```
+
+### 學生總覽回傳範例
+
+```json
+[
+  {
+    "studentId": 1,
+    "name": "王小明",
+    "age": 9,
+    "gradeLabel": "小四",
+    "totalHours": 12.5,
+    "categoryName": "圖書館",
+    "categoryHours": 6.0
+  }
+]
 ```
