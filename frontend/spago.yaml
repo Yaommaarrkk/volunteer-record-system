@@ -1,6 +1,7 @@
 package:
   name: volunteer-record-system-frontend
   dependencies:
+    - affjax-web
     - arrays
     - console
     - datetime
@@ -10,6 +11,7 @@ package:
     - prelude
     - routing
     - routing-duplex
+    - simple-json
   test:
     main: Test.Main
     dependencies: []

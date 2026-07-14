@@ -1,11 +1,13 @@
-package com.volunteerRecordSystem;
+package com.example.backend;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class VolunteerRecordSystemApplication {
+public class BackendApplication {
+
     public static void main(String[] args) {
-        SpringApplication.run(VolunteerRecordSystemApplication.class, args);
+        SpringApplication.run(BackendApplication.class, args);
     }
+
 }
