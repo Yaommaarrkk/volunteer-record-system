@@ -17,6 +17,7 @@ import Page.Records as RecordsPage
 import Page.Summary as SummaryPage
 import Router.Route (Route(..), parseRoute)
 import Routing.Hash (hashes)
+import Widget.QuickNavigation as QuickNavigation
 
 _home = Proxy :: Proxy "homeSlot"
 
@@ -26,11 +27,14 @@ _records = Proxy :: Proxy "recordsSlot"
 
 _summary = Proxy :: Proxy "summarySlot"
 
+_quickNavigation = Proxy :: Proxy "quickNavigationSlot"
+
 type Slots
   = ( homeSlot :: HomePage.Slot Unit
     , masterDataSlot :: MasterDataPage.Slot Unit
     , recordsSlot :: RecordsPage.Slot Unit
     , summarySlot :: SummaryPage.Slot Unit
+    , quickNavigationSlot :: QuickNavigation.Slot Unit
     )
 
 type State
@@ -63,12 +67,16 @@ component =
     }
 
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
-render state = case state.route of
-  Home -> HH.slot_ _home unit HomePage.component unit
-  MasterData masterDataType -> HH.slot_ _masterData unit MasterDataPage.component masterDataType
-  Records -> HH.slot_ _records unit RecordsPage.component unit
-  Summary -> HH.slot_ _summary unit SummaryPage.component unit
-  NotFound str -> HH.div_ [ HH.text ("404 Not Found: " <> str) ]
+render state =
+  HH.div_
+    [ HH.slot_ _quickNavigation unit QuickNavigation.component unit
+    , case state.route of
+        Home -> HH.slot_ _home unit HomePage.component unit
+        MasterData masterDataType -> HH.slot_ _masterData unit MasterDataPage.component masterDataType
+        Records -> HH.slot_ _records unit RecordsPage.component unit
+        Summary -> HH.slot_ _summary unit SummaryPage.component unit
+        NotFound str -> HH.div_ [ HH.text ("404 Not Found: " <> str) ]
+    ]
 
 handleAction :: forall m. MonadAff m => Action -> H.HalogenM State Action Slots Output m Unit
 handleAction action = case action of
