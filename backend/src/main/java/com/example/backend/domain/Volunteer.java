@@ -1,5 +1,6 @@
 package com.example.backend.domain;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -7,6 +8,7 @@ public class Volunteer {
     private Integer id;
     private String name;
     private Integer age;
+    private Instant updatedAt;
     private final List<SeatAssignment> seats = new ArrayList<>();
 
     public static class Seat {
@@ -46,9 +48,14 @@ public class Volunteer {
     }
 
     public Volunteer(Integer id, String name, Integer age) {
+        this(id, name, age, null);
+    }
+
+    public Volunteer(Integer id, String name, Integer age, Instant updatedAt) {
         this.id = id;
         this.name = name;
         this.age = age;
+        this.updatedAt = updatedAt;
     }
 
     public Integer getId() {
@@ -61,6 +68,10 @@ public class Volunteer {
 
     public Integer getAge() {
         return age;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 
     public List<SeatAssignment> getSeats() {

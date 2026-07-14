@@ -488,24 +488,45 @@ body {
   color: #9e352d;
 }
 
-.seat-period-selector {
+.student-list-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 0 0 16px;
+}
+
+.list-control-group,
+.list-radio-options {
   display: flex;
   gap: 18px;
   align-items: center;
-  margin: 0 0 16px;
+}
+
+.list-control-group {
+  gap: 12px;
+}
+
+.list-control-title {
+  color: #71817d;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.list-radio-options {
   color: #365b54;
   font-size: 14px;
   font-weight: 700;
 }
 
-.seat-period-selector label {
+.list-radio-options label {
   display: inline-flex;
   gap: 7px;
   align-items: center;
   cursor: pointer;
 }
 
-.seat-period-selector input {
+.list-radio-options input {
   width: 16px;
   height: 16px;
   accent-color: #25796b;

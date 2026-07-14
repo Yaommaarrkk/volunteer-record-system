@@ -31,13 +31,22 @@ type State =
   , isLoading :: Boolean
   , loadError :: Maybe String
   , selectedSeatPeriod :: SeatPeriod
+  , sortMode :: SortMode
   }
+
+data SortMode
+  = SortBySeat
+  | SortByAge
+  | SortByUpdatedAt
+
+derive instance eqSortMode :: Eq SortMode
 
 data Action
   = Receive Input
   | Retry
   | Delete Int
   | SelectSeatPeriod SeatPeriod
+  | SelectSortMode SortMode
 
 data Output
   = RetryRequested
@@ -51,6 +60,7 @@ component =
         , isLoading: input.isLoading
         , loadError: input.loadError
         , selectedSeatPeriod: Year114SecondSemester
+        , sortMode: SortBySeat
         }
     , render
     , eval:
@@ -76,9 +86,26 @@ render state =
             [ HH.text (show (Array.length state.volunteers) <> " 位學生") ]
         ]
     , HH.div
-        [ HP.class_ (HH.ClassName "seat-period-selector") ]
-        [ seatPeriodRadio "114下" Year114SecondSemester state.selectedSeatPeriod
-        , seatPeriodRadio "115暑假" Year115Summer state.selectedSeatPeriod
+        [ HP.class_ (HH.ClassName "student-list-controls") ]
+        [ HH.div
+            [ HP.class_ (HH.ClassName "list-control-group") ]
+            [ HH.span [ HP.class_ (HH.ClassName "list-control-title") ] [ HH.text "座位顯示" ]
+            , HH.div
+                [ HP.class_ (HH.ClassName "list-radio-options") ]
+                [ seatPeriodRadio "114下" Year114SecondSemester state.selectedSeatPeriod
+                , seatPeriodRadio "115暑假" Year115Summer state.selectedSeatPeriod
+                ]
+            ]
+        , HH.div
+            [ HP.class_ (HH.ClassName "list-control-group") ]
+            [ HH.span [ HP.class_ (HH.ClassName "list-control-title") ] [ HH.text "排序方式" ]
+            , HH.div
+                [ HP.class_ (HH.ClassName "list-radio-options") ]
+                [ sortModeRadio "座位" SortBySeat state.sortMode
+                , sortModeRadio "年齡" SortByAge state.sortMode
+                , sortModeRadio "最後修改時間" SortByUpdatedAt state.sortMode
+                ]
+            ]
         ]
     , renderVolunteerList state
     ]
@@ -96,6 +123,23 @@ seatPeriodRadio label period selectedPeriod =
         , HP.name "student-seat-period"
         , HP.checked (period == selectedPeriod)
         , HE.onChange \_ -> SelectSeatPeriod period
+        ]
+    , HH.text label
+    ]
+
+sortModeRadio
+  :: forall m
+   . String
+  -> SortMode
+  -> SortMode
+  -> H.ComponentHTML Action Slots m
+sortModeRadio label sortMode selectedSortMode =
+  HH.label_
+    [ HH.input
+        [ HP.type_ HP.InputRadio
+        , HP.name "student-list-sort-mode"
+        , HP.checked (sortMode == selectedSortMode)
+        , HE.onChange \_ -> SelectSortMode sortMode
         ]
     , HH.text label
     ]
@@ -130,9 +174,41 @@ renderVolunteerList state
                     , HH.th_ [ HH.text "操作" ]
                     ]
                 ]
-            , HH.tbody_ (map (renderVolunteer state.selectedSeatPeriod) state.volunteers)
+            , HH.tbody_
+                (map (renderVolunteer state.selectedSeatPeriod) (sortedVolunteers state))
             ]
         ]
+
+sortedVolunteers :: State -> Array Volunteer
+sortedVolunteers state =
+  Array.sortBy (compareVolunteers state.sortMode state.selectedSeatPeriod) state.volunteers
+
+compareVolunteers :: SortMode -> SeatPeriod -> Volunteer -> Volunteer -> Ordering
+compareVolunteers sortMode period left right =
+  case sortMode of
+    SortBySeat ->
+      withNameFallback
+        (compareMaybeSeat (seatForPeriod period left) (seatForPeriod period right))
+        left
+        right
+    SortByAge ->
+      withNameFallback (compare left.age right.age) left right
+    SortByUpdatedAt ->
+      withNameFallback (compare right.updatedAt left.updatedAt) left right
+
+withNameFallback :: Ordering -> Volunteer -> Volunteer -> Ordering
+withNameFallback ordering left right = case ordering of
+  EQ -> compare left.name right.name
+  _ -> ordering
+
+compareMaybeSeat :: Maybe { row :: Int, col :: Int } -> Maybe { row :: Int, col :: Int } -> Ordering
+compareMaybeSeat left right = case left, right of
+  Nothing, Nothing -> EQ
+  Nothing, Just _ -> GT
+  Just _, Nothing -> LT
+  Just leftSeat, Just rightSeat -> case compare leftSeat.row rightSeat.row of
+    EQ -> compare leftSeat.col rightSeat.col
+    ordering -> ordering
 
 renderVolunteer :: forall m. SeatPeriod -> Volunteer -> H.ComponentHTML Action Slots m
 renderVolunteer period volunteer =
@@ -165,3 +241,4 @@ handleAction = case _ of
   Retry -> H.raise RetryRequested
   Delete id -> H.raise (DeleteRequested id)
   SelectSeatPeriod period -> H.modify_ _ { selectedSeatPeriod = period }
+  SelectSortMode sortMode -> H.modify_ _ { sortMode = sortMode }

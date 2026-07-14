@@ -17,7 +17,8 @@ public class VolunteerRepository {
                 return new Volunteer(
                         resultSet.getInt("id"),
                         resultSet.getString("name"),
-                        resultSet.getInt("age")
+                        resultSet.getInt("age"),
+                        resultSet.getTimestamp("updated_at").toInstant()
                 );
             };
 
@@ -35,7 +36,7 @@ public class VolunteerRepository {
 
     public List<Volunteer> getAll() {
         String sql = """
-            SELECT *
+            SELECT id, name, age, updated_at
             FROM volunteer
             ORDER BY age, name
             """;
@@ -48,7 +49,7 @@ public class VolunteerRepository {
     public Volunteer findByName(String name) {
         // 傳變數進去 用'?'代替 變數則接在query的第三個參數
         String sql = """
-            SELECT *
+            SELECT id, name, age, updated_at
             FROM volunteer
             WHERE name = ?
             """;

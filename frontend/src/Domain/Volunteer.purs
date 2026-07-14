@@ -35,6 +35,7 @@ type Volunteer
   = { id :: Int
     , name :: String
     , age :: Int
+    , updatedAt :: String
     , seats :: Array SeatAssignment
     }
 
