@@ -8,6 +8,8 @@ package:
     - foldable-traversable
     - halogen
     - prelude
+    - routing
+    - routing-duplex
   test:
     main: Test.Main
     dependencies: []

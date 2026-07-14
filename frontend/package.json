@@ -4,7 +4,8 @@
     "build:direct": "npm run build",
     "build:spago": "spago build && esbuild entry.js --bundle --outfile=dist/bundle.js --platform=browser --format=iife",
     "format": "node scripts/format-purs.js",
-    "serve": "npx serve ."
+    "serve": "node server.js",
+    "start": "npm run build && npm run serve"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",
