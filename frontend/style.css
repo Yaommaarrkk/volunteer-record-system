@@ -288,6 +288,12 @@ body {
   outline: 3px solid rgba(37, 121, 107, 0.13);
 }
 
+.form-error {
+  color: #b33d34;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .seat-field {
   position: relative;
 }
@@ -373,6 +379,10 @@ body {
 }
 
 .student-submit {
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+  justify-content: center;
   min-height: 44px;
   margin-top: 22px;
   border: 0;
@@ -383,6 +393,69 @@ body {
   cursor: pointer;
   font: inherit;
   font-weight: 800;
+}
+
+.student-submit:disabled {
+  background: #789a94;
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.submit-spinner {
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(255, 255, 255, 0.42);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: submit-spinner-rotation 700ms linear infinite;
+}
+
+.submit-notice {
+  position: fixed;
+  z-index: 200;
+  top: 18px;
+  left: 50%;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 13px 22px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  box-shadow: 0 14px 36px rgba(31, 58, 52, 0.2);
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  transform: translateX(-50%);
+  animation: submit-notice-entry 180ms ease-out;
+}
+
+.submit-notice-success {
+  border-color: #8bc8b5;
+  background: #e9f8f2;
+  color: #17634f;
+}
+
+.submit-notice-error {
+  border-color: #e4a9a3;
+  background: #fff0ee;
+  color: #9e352d;
+}
+
+@keyframes submit-spinner-rotation {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes submit-notice-entry {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .list-heading {
@@ -454,6 +527,28 @@ body {
   border-color: #e2b9b5;
   background: #fff7f6;
   color: #a13e35;
+}
+
+.list-error p {
+  margin: 0 0 16px;
+}
+
+.list-retry-button {
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid #c85f55;
+  border-radius: 9px;
+  background: #fff;
+  color: #9f3a31;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.list-retry-button:hover,
+.list-retry-button:focus-visible {
+  background: #a84238;
+  color: #fff;
 }
 
 @media (max-width: 720px) {

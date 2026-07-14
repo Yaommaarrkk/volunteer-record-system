@@ -2,6 +2,7 @@ package com.example.backend.repository;
 
 import java.util.List;
 import org.springframework.stereotype.Repository;
+import com.example.backend.domain.EducationLevel;
 import com.example.backend.domain.Volunteer;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -66,5 +67,43 @@ public class VolunteerRepository {
         return volunteers.stream()
                 .findFirst()
                 .orElse(null);
+    }
+
+    public Integer nextId(EducationLevel educationLevel) {
+        String sql = switch (educationLevel) {
+            case ELEMENTARY_SCHOOL ->
+                    "SELECT nextval('elementary_volunteer_id_seq')";
+            case JUNIOR_HIGH_SCHOOL ->
+                    "SELECT nextval('junior_high_volunteer_id_seq')";
+            default -> throw new IllegalArgumentException("目前只支援國小與國中");
+        };
+
+        Long id = jdbcTemplate.queryForObject(sql, Long.class);
+        if (id == null) {
+            throw new IllegalStateException("無法取得學生流水號");
+        }
+
+        return Math.toIntExact(id);
+    }
+
+    public int insert(Volunteer volunteer) {
+        // 傳變數進去 用'?'代替 變數則接在query的第三個參數
+        String sql = """
+            INSERT INTO volunteer (id, name, age, seat_row, seat_col)
+            VALUES (?, ?, ?, ?, ?)
+            """;
+
+        Volunteer.Seat seat = volunteer.getSeat();
+        Integer seatRow = seat == null ? null : seat.getRow();
+        Integer seatCol = seat == null ? null : seat.getCol();
+
+        return jdbcTemplate.update(
+                sql,
+                volunteer.getId(),
+                volunteer.getName(),
+                volunteer.getAge(),
+                seatRow,
+                seatCol
+        );
     }
 }

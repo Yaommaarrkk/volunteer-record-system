@@ -5,12 +5,15 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.CrossOrigin;
 
 import com.example.backend.domain.Volunteer;
+import com.example.backend.dto.request.CreateVolunteerRequest;
 import com.example.backend.dto.response.Response;
 import com.example.backend.repository.VolunteerRepository;
 import com.example.backend.util.ApiResponse;
@@ -27,7 +30,7 @@ public class UserController {
     }
 
     @GetMapping("/volunteer/{name}")
-    public ResponseEntity<Response<Volunteer>> volunteer(@PathVariable String name) {
+    public ResponseEntity<Response<Volunteer>> getVolunteer(@PathVariable String name) {
         Volunteer volunteer = volunteerRepository.findByName(name);
         if(volunteer != null) {
             return ResponseEntity.ok(ApiResponse.success(volunteer));
@@ -40,11 +43,46 @@ public class UserController {
     }
 
     @GetMapping("/volunteers")
-    public ResponseEntity<Response<List<Volunteer>>> volunteer() {
+    public ResponseEntity<Response<List<Volunteer>>> getVolunteers() {
         List<Volunteer> volunteers = volunteerRepository.getAll();
         return ResponseEntity.ok(
                 ApiResponse.success(volunteers)
         );
+    }
+    
+    @PostMapping("/volunteer")
+    public ResponseEntity<Response<Void>> createVolunteer(@RequestBody CreateVolunteerRequest request) {
+        try {
+            Integer id = volunteerRepository.nextId(request.educationLevel());
+            Volunteer.Seat seat = request.seat() == null
+                    ? null
+                    : new Volunteer.Seat(
+                            request.seat().row(),
+                            request.seat().col()
+                    );
+
+            Volunteer volunteer = new Volunteer(
+                    id,
+                    request.name(),
+                    request.age(),
+                    seat
+            );
+
+            int insertedRows = volunteerRepository.insert(volunteer);
+            if (insertedRows != 1) {
+                return ResponseEntity
+                        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(ApiResponse.fail("新增學生失敗"));
+            }
+
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(ApiResponse.success("新增學生成功", null));
+        } catch (IllegalArgumentException error) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.fail(error.getMessage()));
+        }
     }
 
 }
