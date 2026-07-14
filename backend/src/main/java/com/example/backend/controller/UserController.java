@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -83,6 +84,20 @@ public class UserController {
                     .status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.fail(error.getMessage()));
         }
+    }
+
+    @DeleteMapping("/volunteer/{id}")
+    public ResponseEntity<Response<Void>> deleteVolunteer(@PathVariable Integer id) {
+        int deletedRows = volunteerRepository.deleteById(id);
+        if (deletedRows == 0) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.fail("編號: <" + id + "> 不存在"));
+        }
+
+        return ResponseEntity.ok(
+                ApiResponse.success("刪除學生成功", null)
+        );
     }
 
 }

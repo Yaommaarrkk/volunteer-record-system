@@ -42,6 +42,7 @@ type State =
   , loadError :: Maybe String
   , isSubmitting :: Boolean
   , notice :: Maybe Notice
+  , noticeVersion :: Int
   }
 
 type VolunteersResponse =
@@ -50,7 +51,7 @@ type VolunteersResponse =
   , data :: Array Volunteer
   }
 
-type CreateVolunteerResponse =
+type MutationResponse =
   { success :: Boolean
   , message :: String
   , data :: Maybe String
@@ -71,6 +72,7 @@ data Action
   | VolunteersLoaded (Either String (Array Volunteer))
   | StudentFormOutput StudentForm.Output
   | StudentListOutput StudentList.Output
+  | HideNotice Int
 
 data Output = OutputUnit
 
@@ -82,6 +84,7 @@ initialState masterDataType =
   , loadError: Nothing
   , isSubmitting: false
   , notice: Nothing
+  , noticeVersion: 0
   }
 
 component :: forall query m. MonadAff m => H.Component query Input Output m
@@ -176,26 +179,56 @@ handleAction = case _ of
           <$> parallel (createVolunteer request)
           <*> parallel (delay (Milliseconds 1000.0))
     case result of
-      Left message ->
-        H.modify_
-          _
-            { isSubmitting = false
-            , notice = Just { kind: ErrorNotice, message }
-            }
+      Left message -> do
+        H.modify_ _ { isSubmitting = false }
+        showNotice ErrorNotice message
       Right message -> do
         H.modify_
           _
             { isSubmitting = false
-            , notice = Just { kind: SuccessNotice, message }
             , isLoading = true
             , loadError = Nothing
             }
+        showNotice SuccessNotice message
         volunteersResult <- H.liftAff loadVolunteers
         handleAction (VolunteersLoaded volunteersResult)
   StudentListOutput StudentList.RetryRequested -> do
     H.modify_ _ { isLoading = true, loadError = Nothing }
     result <- H.liftAff loadVolunteers
     handleAction (VolunteersLoaded result)
+  StudentListOutput (StudentList.DeleteRequested id) -> do
+    H.modify_ _ { isLoading = true, loadError = Nothing }
+    result <- H.liftAff (deleteVolunteer id)
+    case result of
+      Left message -> do
+        H.modify_ _ { isLoading = false }
+        showNotice ErrorNotice message
+      Right message -> do
+        showNotice SuccessNotice message
+        volunteersResult <- H.liftAff loadVolunteers
+        handleAction (VolunteersLoaded volunteersResult)
+  HideNotice version -> do
+    state <- H.get
+    when (state.noticeVersion == version)
+      $ H.modify_ _ { notice = Nothing }
+
+showNotice
+  :: forall m
+   . MonadAff m
+  => NoticeKind
+  -> String
+  -> H.HalogenM State Action Slots Output m Unit
+showNotice kind message = do
+  state <- H.get
+  let version = state.noticeVersion + 1
+  H.modify_
+    _
+      { notice = Just { kind, message }
+      , noticeVersion = version
+      }
+  void $ H.fork do
+    H.liftAff (delay (Milliseconds 3000.0))
+    handleAction (HideNotice version)
 
 loadVolunteers :: Aff (Either String (Array Volunteer))
 loadVolunteers = do
@@ -219,6 +252,20 @@ createVolunteer volunteerRq = case jsonParser (writeJSON volunteerRq) of
       Left error -> Left (AX.printError error)
       Right response -> case readJSON response.body of
         Left errors -> Left ("新增學生回應格式錯誤：" <> show errors)
-        Right (decoded :: CreateVolunteerResponse) ->
+        Right (decoded :: MutationResponse) ->
           if decoded.success then Right decoded.message
           else Left decoded.message
+
+deleteVolunteer :: Int -> Aff (Either String String)
+deleteVolunteer id = do
+  result <-
+    AX.delete
+      ResponseFormat.string
+      ("http://127.0.0.1:8080/api/volunteer/" <> show id)
+  pure case result of
+    Left error -> Left (AX.printError error)
+    Right response -> case readJSON response.body of
+      Left errors -> Left ("刪除學生回應格式錯誤：" <> show errors)
+      Right (decoded :: MutationResponse) ->
+        if decoded.success then Right decoded.message
+        else Left decoded.message

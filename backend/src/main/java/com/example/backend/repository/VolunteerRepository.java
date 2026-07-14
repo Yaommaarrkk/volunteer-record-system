@@ -106,4 +106,13 @@ public class VolunteerRepository {
                 seatCol
         );
     }
+
+    public int deleteById(Integer id) {
+        String sql = """
+            DELETE FROM volunteer
+            WHERE id = ?
+            """;
+
+        return jdbcTemplate.update(sql, id);
+    }
 }

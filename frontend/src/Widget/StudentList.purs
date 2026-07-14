@@ -31,8 +31,11 @@ type State = Input
 data Action
   = Receive Input
   | Retry
+  | Delete Int
 
-data Output = RetryRequested
+data Output
+  = RetryRequested
+  | DeleteRequested Int
 
 component :: forall query m. H.Component query Input Output m
 component =
@@ -91,6 +94,7 @@ renderVolunteerList state
                     , HH.th_ [ HH.text "姓名" ]
                     , HH.th_ [ HH.text "年級" ]
                     , HH.th_ [ HH.text "座位" ]
+                    , HH.th_ [ HH.text "操作" ]
                     ]
                 ]
             , HH.tbody_ (map renderVolunteer state.volunteers)
@@ -104,6 +108,13 @@ renderVolunteer volunteer =
     , HH.td_ [ HH.strong_ [ HH.text volunteer.name ] ]
     , HH.td_ [ HH.text (ageToGradeLabel volunteer.age) ]
     , HH.td_ [ HH.text (showSeat volunteer.seat) ]
+    , HH.td_
+        [ HH.button
+            [ HP.class_ (HH.ClassName "student-delete-button")
+            , HE.onClick \_ -> Delete volunteer.id
+            ]
+            [ HH.text "刪除" ]
+        ]
     ]
 
 handleAction
@@ -113,3 +124,4 @@ handleAction
 handleAction = case _ of
   Receive input -> H.put input
   Retry -> H.raise RetryRequested
+  Delete id -> H.raise (DeleteRequested id)

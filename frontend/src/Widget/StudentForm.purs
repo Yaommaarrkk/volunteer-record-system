@@ -12,7 +12,7 @@ import Data.Int as Int
 import Data.Maybe (Maybe(..))
 import Data.String.Common as String
 import Domain.EducationLevel (EducationLevel(..), educationLevelToApi)
-import Domain.Volunteer (Seat, showSeat)
+import Domain.Volunteer (Seat, ageToGradeLabel, showSeat)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -41,12 +41,16 @@ type State =
   , seat :: Maybe Seat
   , nameError :: Maybe String
   , isSubmitting :: Boolean
+  , isSeatPickerOpen :: Boolean
   }
 
 data Action
   = SetEducationLevel String
   | SetName String
   | SetAge String
+  | ToggleSeatPicker
+  | CloseSeatPicker
+  | ClearSeat
   | SelectSeat Seat
   | Submit
   | Receive Input
@@ -62,6 +66,7 @@ initialState input =
   , seat: Nothing
   , nameError: Nothing
   , isSubmitting: input.isSubmitting
+  , isSeatPickerOpen: false
   }
 
 component :: forall query m. H.Component query Input Output m
@@ -81,7 +86,15 @@ render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.section
     [ HP.class_ (HH.ClassName "student-form-card") ]
-    [ HH.h2_ [ HH.text "學生資料" ]
+    [ if state.isSeatPickerOpen then
+        HH.div
+          [ HP.class_ (HH.ClassName "seat-picker-backdrop")
+          , HE.onClick \_ -> CloseSeatPicker
+          ]
+          []
+      else
+        HH.text ""
+    , HH.h2_ [ HH.text "學生資料" ]
     , HH.div
         [ HP.class_ (HH.ClassName "student-form-grid") ]
         [ formField "類型"
@@ -113,7 +126,7 @@ render state =
                     [ HP.class_ (HH.ClassName "form-error") ]
                     [ HH.text message ]
             ]
-        , formField "年齡"
+        , formField "年級(暑假前)"
             ( HH.select
                 [ HP.value (show state.age)
                 , HE.onValueChange SetAge
@@ -122,16 +135,27 @@ render state =
                     (\age ->
                       HH.option
                         [ HP.value (show age) ]
-                        [ HH.text (show age <> " 歲") ]
+                        [ HH.text (ageToGradeLabel age) ]
                     )
                     (Array.range 5 15)
                 )
             )
         , HH.div
-            [ HP.class_ (HH.ClassName "form-field seat-field") ]
+            [ HP.classes
+                ( [ HH.ClassName "form-field"
+                  , HH.ClassName "seat-field"
+                  ]
+                    <> if state.isSeatPickerOpen then
+                        [ HH.ClassName "seat-picker-open" ]
+                      else
+                        []
+                )
+            ]
             [ HH.span_ [ HH.text "座位" ]
             , HH.button
-                [ HP.class_ (HH.ClassName "seat-picker-trigger") ]
+                [ HP.class_ (HH.ClassName "seat-picker-trigger")
+                , HE.onClick \_ -> ToggleSeatPicker
+                ]
                 [ HH.text case state.seat of
                     Nothing -> "選擇座位"
                     Just seat -> showSeat (Just seat)
@@ -142,8 +166,16 @@ render state =
                 , HH.div
                     [ HP.class_ (HH.ClassName "seat-stage") ]
                     [ HH.span
+                        [ HP.class_ (HH.ClassName "seat-stage-spacer") ]
+                        []
+                    , HH.span
                         [ HP.class_ (HH.ClassName "seat-stage-button") ]
                         [ HH.text "講台" ]
+                    , HH.button
+                        [ HP.class_ (HH.ClassName "seat-clear-button")
+                        , HE.onClick \_ -> ClearSeat
+                        ]
+                        [ HH.text "清除" ]
                     ]
                 , HH.div
                     [ HP.class_ (HH.ClassName "seat-grid") ]
@@ -159,18 +191,18 @@ render state =
                     )
                 ]
             ]
+        , HH.button
+            [ HP.class_ (HH.ClassName "student-submit")
+            , HP.disabled state.isSubmitting
+            , HE.onClick \_ -> Submit
+            ]
+            if state.isSubmitting then
+              [ HH.span [ HP.class_ (HH.ClassName "submit-spinner") ] []
+              , HH.text "新增中…"
+              ]
+            else
+              [ HH.text "新增學生" ]
         ]
-    , HH.button
-        [ HP.class_ (HH.ClassName "student-submit")
-        , HP.disabled state.isSubmitting
-        , HE.onClick \_ -> Submit
-        ]
-        if state.isSubmitting then
-          [ HH.span [ HP.class_ (HH.ClassName "submit-spinner") ] []
-          , HH.text "新增中…"
-          ]
-        else
-          [ HH.text "新增學生" ]
     ]
 
 formField
@@ -203,8 +235,14 @@ handleAction = case _ of
   SetAge value -> case Int.fromString value of
     Nothing -> pure unit
     Just age -> H.modify_ _ { age = age }
+  ToggleSeatPicker ->
+    H.modify_ \state -> state { isSeatPickerOpen = not state.isSeatPickerOpen }
+  CloseSeatPicker ->
+    H.modify_ _ { isSeatPickerOpen = false }
+  ClearSeat ->
+    H.modify_ _ { seat = Nothing, isSeatPickerOpen = false }
   SelectSeat seat ->
-    H.modify_ _ { seat = Just seat }
+    H.modify_ _ { seat = Just seat, isSeatPickerOpen = false }
   Submit -> do
     state <- H.get
     if state.isSubmitting then

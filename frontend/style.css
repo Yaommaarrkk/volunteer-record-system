@@ -255,7 +255,7 @@ body {
 
 .student-form-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   gap: 18px;
   align-items: start;
 }
@@ -298,6 +298,17 @@ body {
   position: relative;
 }
 
+.seat-field.seat-picker-open {
+  z-index: 3;
+}
+
+.seat-picker-backdrop {
+  position: fixed;
+  z-index: 2;
+  inset: 0;
+  background: transparent;
+}
+
 .seat-picker-trigger {
   cursor: pointer;
   text-align: left;
@@ -321,7 +332,7 @@ body {
   transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
 }
 
-.seat-field:focus-within .seat-picker {
+.seat-field.seat-picker-open .seat-picker {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
@@ -341,11 +352,16 @@ body {
 }
 
 .seat-stage {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   margin: 0 0 14px;
   padding-bottom: 12px;
   border-bottom: 1px dashed #cfddd8;
+}
+
+.seat-stage-spacer {
+  width: 54px;
 }
 
 .seat-stage-button {
@@ -359,6 +375,24 @@ body {
   color: #28685e;
   font-size: 12px;
   font-weight: 800;
+}
+
+.seat-clear-button {
+  justify-self: end;
+  width: 54px;
+  height: 54px;
+  border: 1px solid #d44d45;
+  border-radius: 8px;
+  background: #fff1f0;
+  color: #b82f29;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.seat-clear-button:hover {
+  background: #d44d45;
+  color: #fff;
 }
 
 .seat-button {
@@ -428,6 +462,20 @@ body {
   animation: submit-notice-entry 180ms ease-out;
 }
 
+.submit-notice::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  border-radius: 0 0 12px 12px;
+  background: currentColor;
+  content: "";
+  pointer-events: none;
+  transform-origin: left;
+  animation: submit-notice-border-countdown 3s linear forwards;
+}
+
 .submit-notice-success {
   border-color: #8bc8b5;
   background: #e9f8f2;
@@ -455,6 +503,12 @@ body {
   to {
     opacity: 1;
     transform: translate(-50%, 0);
+  }
+}
+
+@keyframes submit-notice-border-countdown {
+  to {
+    transform: scaleX(0);
   }
 }
 
@@ -513,6 +567,26 @@ body {
 
 .student-table tbody tr:hover {
   background: #f9fcfb;
+}
+
+.student-delete-button {
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid #d78e87;
+  border-radius: 8px;
+  background: #fff7f6;
+  color: #a33f36;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.student-delete-button:hover,
+.student-delete-button:focus-visible {
+  border-color: #a84238;
+  background: #a84238;
+  color: #fff;
 }
 
 .list-status {
