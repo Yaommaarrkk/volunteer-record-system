@@ -122,7 +122,6 @@ renderStudents state =
             , HH.p [ HP.class_ (HH.ClassName "page-description") ]
                 [ HH.text "建立學生基本資料與座位，並查看目前資料庫內的所有學生。" ]
             ]
-        , HH.a [ HP.class_ (HH.ClassName "back-link"), HP.href "#/" ] [ HH.text "返回首頁" ]
         ]
     , HH.slot
         _studentForm
