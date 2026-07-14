@@ -42,3 +42,10 @@ const server = http.createServer((request, response) => {
 server.listen(port, host, () => {
   console.log(`Frontend server: http://${host}:${port}`);
 });
+
+process.on("SIGINT", () => {
+  server.close(() => {
+    console.log("Frontend server stopped.");
+    process.exit(0);
+  });
+});
