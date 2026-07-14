@@ -16,7 +16,7 @@ import Data.Array as Array
 import Data.Foldable (intercalate)
 import Data.Maybe (Maybe(..))
 import Data.Ordering (Ordering(..))
-import Domain.Volunteer (Volunteer, getGrade, showSeat)
+import Domain.Volunteer (SeatPeriod(..), Volunteer, getGrade, seatForPeriod, showSeat)
 
 newtype VolunteerList
   = VolunteerList (Array Volunteer)
@@ -57,7 +57,7 @@ volunteerToRow volunteer =
   , volunteer.name
   , show volunteer.age
   , show (getGrade volunteer)
-  , showSeat volunteer.seat
+  , showSeat (seatForPeriod Year114SecondSemester volunteer)
   ]
 
 compareVolunteerGrade :: Volunteer -> Volunteer -> Ordering
@@ -66,7 +66,7 @@ compareVolunteerGrade left right = case compare (getGrade left) (getGrade right)
   ordering -> ordering
 
 compareVolunteerSeat :: Volunteer -> Volunteer -> Ordering
-compareVolunteerSeat left right = case compareMaybeSeat left.seat right.seat of
+compareVolunteerSeat left right = case compareMaybeSeat (seatForPeriod Year114SecondSemester left) (seatForPeriod Year114SecondSemester right) of
   EQ -> compare left.name right.name
   ordering -> ordering
 

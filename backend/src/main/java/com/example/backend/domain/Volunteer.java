@@ -1,10 +1,13 @@
 package com.example.backend.domain;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Volunteer {
     private Integer id;
     private String name;
     private Integer age;
-    private Seat seat;
+    private final List<SeatAssignment> seats = new ArrayList<>();
 
     public static class Seat {
         private Integer row;
@@ -24,11 +27,28 @@ public class Volunteer {
         }
     }
 
-    public Volunteer(Integer id, String name, Integer age, Seat seat) {
+    public static class SeatAssignment {
+        private final SeatPeriod period;
+        private final Seat seat;
+
+        public SeatAssignment(SeatPeriod period, Seat seat) {
+            this.period = period;
+            this.seat = seat;
+        }
+
+        public SeatPeriod getPeriod() {
+            return period;
+        }
+
+        public Seat getSeat() {
+            return seat;
+        }
+    }
+
+    public Volunteer(Integer id, String name, Integer age) {
         this.id = id;
         this.name = name;
         this.age = age;
-        this.seat = seat;
     }
 
     public Integer getId() {
@@ -43,7 +63,11 @@ public class Volunteer {
         return age;
     }
 
-    public Seat getSeat() {
-        return seat;
+    public List<SeatAssignment> getSeats() {
+        return seats;
+    }
+
+    public void addSeat(SeatAssignment seatAssignment) {
+        seats.add(seatAssignment);
     }
 }

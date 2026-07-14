@@ -55,19 +55,27 @@ public class UserController {
     public ResponseEntity<Response<Void>> createVolunteer(@RequestBody CreateVolunteerRequest request) {
         try {
             Integer id = volunteerRepository.nextId(request.educationLevel());
-            Volunteer.Seat seat = request.seat() == null
-                    ? null
-                    : new Volunteer.Seat(
-                            request.seat().row(),
-                            request.seat().col()
-                    );
-
             Volunteer volunteer = new Volunteer(
                     id,
                     request.name(),
-                    request.age(),
-                    seat
+                    request.age()
             );
+
+            if (request.seats() != null) {
+                for (CreateVolunteerRequest.SeatAssignmentRequest assignment : request.seats()) {
+                    if (assignment != null && assignment.seat() != null) {
+                        volunteer.addSeat(
+                                new Volunteer.SeatAssignment(
+                                        assignment.period(),
+                                        new Volunteer.Seat(
+                                                assignment.seat().row(),
+                                                assignment.seat().col()
+                                        )
+                                )
+                        );
+                    }
+                }
+            }
 
             int insertedRows = volunteerRepository.insert(volunteer);
             if (insertedRows != 1) {

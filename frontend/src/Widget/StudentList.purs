@@ -9,7 +9,7 @@ import Prelude
 
 import Data.Array as Array
 import Data.Maybe (Maybe(..))
-import Domain.Volunteer (Volunteer, ageToGradeLabel, showSeat)
+import Domain.Volunteer (SeatPeriod(..), Volunteer, ageToGradeLabel, seatForPeriod, showSeat)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -26,12 +26,18 @@ type Input =
   , loadError :: Maybe String
   }
 
-type State = Input
+type State =
+  { volunteers :: Array Volunteer
+  , isLoading :: Boolean
+  , loadError :: Maybe String
+  , selectedSeatPeriod :: SeatPeriod
+  }
 
 data Action
   = Receive Input
   | Retry
   | Delete Int
+  | SelectSeatPeriod SeatPeriod
 
 data Output
   = RetryRequested
@@ -40,7 +46,12 @@ data Output
 component :: forall query m. H.Component query Input Output m
 component =
   H.mkComponent
-    { initialState: identity
+    { initialState: \input ->
+        { volunteers: input.volunteers
+        , isLoading: input.isLoading
+        , loadError: input.loadError
+        , selectedSeatPeriod: Year114SecondSemester
+        }
     , render
     , eval:
         H.mkEval
@@ -64,7 +75,29 @@ render state =
             [ HP.class_ (HH.ClassName "student-count") ]
             [ HH.text (show (Array.length state.volunteers) <> " 位學生") ]
         ]
+    , HH.div
+        [ HP.class_ (HH.ClassName "seat-period-selector") ]
+        [ seatPeriodRadio "114下" Year114SecondSemester state.selectedSeatPeriod
+        , seatPeriodRadio "115暑假" Year115Summer state.selectedSeatPeriod
+        ]
     , renderVolunteerList state
+    ]
+
+seatPeriodRadio
+  :: forall m
+   . String
+  -> SeatPeriod
+  -> SeatPeriod
+  -> H.ComponentHTML Action Slots m
+seatPeriodRadio label period selectedPeriod =
+  HH.label_
+    [ HH.input
+        [ HP.type_ HP.InputRadio
+        , HP.name "student-seat-period"
+        , HP.checked (period == selectedPeriod)
+        , HE.onChange \_ -> SelectSeatPeriod period
+        ]
+    , HH.text label
     ]
 
 renderVolunteerList :: forall m. State -> H.ComponentHTML Action Slots m
@@ -97,17 +130,17 @@ renderVolunteerList state
                     , HH.th_ [ HH.text "操作" ]
                     ]
                 ]
-            , HH.tbody_ (map renderVolunteer state.volunteers)
+            , HH.tbody_ (map (renderVolunteer state.selectedSeatPeriod) state.volunteers)
             ]
         ]
 
-renderVolunteer :: forall m. Volunteer -> H.ComponentHTML Action Slots m
-renderVolunteer volunteer =
+renderVolunteer :: forall m. SeatPeriod -> Volunteer -> H.ComponentHTML Action Slots m
+renderVolunteer period volunteer =
   HH.tr_
     [ HH.td_ [ HH.text (show volunteer.id) ]
     , HH.td_ [ HH.strong_ [ HH.text volunteer.name ] ]
     , HH.td_ [ HH.text (ageToGradeLabel volunteer.age) ]
-    , HH.td_ [ HH.text (showSeat volunteer.seat) ]
+    , HH.td_ [ HH.text (showSeat (seatForPeriod period volunteer)) ]
     , HH.td_
         [ HH.button
             [ HP.class_ (HH.ClassName "student-delete-button")
@@ -122,6 +155,13 @@ handleAction
    . Action
   -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
-  Receive input -> H.put input
+  Receive input ->
+    H.modify_
+      _
+        { volunteers = input.volunteers
+        , isLoading = input.isLoading
+        , loadError = input.loadError
+        }
   Retry -> H.raise RetryRequested
   Delete id -> H.raise (DeleteRequested id)
+  SelectSeatPeriod period -> H.modify_ _ { selectedSeatPeriod = period }

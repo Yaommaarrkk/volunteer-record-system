@@ -2,7 +2,9 @@ package com.example.backend.repository;
 
 import java.util.List;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import com.example.backend.domain.EducationLevel;
+import com.example.backend.domain.SeatPeriod;
 import com.example.backend.domain.Volunteer;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -12,22 +14,10 @@ public class VolunteerRepository {
     private final JdbcTemplate jdbcTemplate;
     private static final RowMapper<Volunteer> VOLUNTEER_ROW_MAPPER =
             (resultSet, rowNumber) -> {
-                Integer seatRow = // 使用getObject 因為getInt會把null變成0
-                        resultSet.getObject("seat_row", Integer.class);
-
-                Integer seatCol =
-                        resultSet.getObject("seat_col", Integer.class);
-
-                Volunteer.Seat seat =
-                        seatRow == null || seatCol == null
-                                ? null
-                                : new Volunteer.Seat(seatRow, seatCol);
-
                 return new Volunteer(
                         resultSet.getInt("id"),
                         resultSet.getString("name"),
-                        resultSet.getInt("age"),
-                        seat
+                        resultSet.getInt("age")
                 );
             };
 
@@ -47,10 +37,12 @@ public class VolunteerRepository {
         String sql = """
             SELECT *
             FROM volunteer
-            ORDER BY seat_row, seat_col, age
+            ORDER BY age, name
             """;
 
-        return jdbcTemplate.query(sql, VOLUNTEER_ROW_MAPPER);
+        List<Volunteer> volunteers = jdbcTemplate.query(sql, VOLUNTEER_ROW_MAPPER);
+        volunteers.forEach(this::loadSeats);
+        return volunteers;
     }
 
     public Volunteer findByName(String name) {
@@ -64,9 +56,14 @@ public class VolunteerRepository {
         List<Volunteer> volunteers =
                 jdbcTemplate.query(sql, VOLUNTEER_ROW_MAPPER, name);
 
-        return volunteers.stream()
+        Volunteer volunteer = volunteers.stream()
                 .findFirst()
                 .orElse(null);
+
+        if (volunteer != null) {
+            loadSeats(volunteer);
+        }
+        return volunteer;
     }
 
     public Integer nextId(EducationLevel educationLevel) {
@@ -86,25 +83,61 @@ public class VolunteerRepository {
         return Math.toIntExact(id);
     }
 
+    @Transactional
     public int insert(Volunteer volunteer) {
         // 傳變數進去 用'?'代替 變數則接在query的第三個參數
         String sql = """
-            INSERT INTO volunteer (id, name, age, seat_row, seat_col)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO volunteer (id, name, age)
+            VALUES (?, ?, ?)
             """;
 
-        Volunteer.Seat seat = volunteer.getSeat();
-        Integer seatRow = seat == null ? null : seat.getRow();
-        Integer seatCol = seat == null ? null : seat.getCol();
-
-        return jdbcTemplate.update(
+        int insertedRows = jdbcTemplate.update(
                 sql,
                 volunteer.getId(),
                 volunteer.getName(),
-                volunteer.getAge(),
-                seatRow,
-                seatCol
+                volunteer.getAge()
         );
+
+        String seatSql = """
+            INSERT INTO volunteer_seat (volunteer_id, period, seat_row, seat_col)
+            VALUES (?, ?, ?, ?)
+            """;
+
+        for (Volunteer.SeatAssignment assignment : volunteer.getSeats()) {
+            jdbcTemplate.update(
+                    seatSql,
+                    volunteer.getId(),
+                    assignment.getPeriod().name(),
+                    assignment.getSeat().getRow(),
+                    assignment.getSeat().getCol()
+            );
+        }
+
+        return insertedRows;
+    }
+
+    private void loadSeats(Volunteer volunteer) {
+        String sql = """
+            SELECT period, seat_row, seat_col
+            FROM volunteer_seat
+            WHERE volunteer_id = ?
+            ORDER BY period
+            """;
+
+        jdbcTemplate.query(sql, resultSet -> {
+            Integer seatRow = // 使用getObject 因為getInt會把null變成0
+                    resultSet.getObject("seat_row", Integer.class);
+
+            Integer seatCol =
+                    resultSet.getObject("seat_col", Integer.class);
+
+            volunteer.addSeat(
+                    new Volunteer.SeatAssignment(
+                            SeatPeriod.valueOf(resultSet.getString("period")),
+                            new Volunteer.Seat(seatRow, seatCol)
+                    )
+            );
+        }, volunteer.getId());
     }
 
     public int deleteById(Integer id) {

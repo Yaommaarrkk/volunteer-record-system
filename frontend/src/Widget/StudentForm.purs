@@ -12,7 +12,7 @@ import Data.Int as Int
 import Data.Maybe (Maybe(..))
 import Data.String.Common as String
 import Domain.EducationLevel (EducationLevel(..), educationLevelToApi)
-import Domain.Volunteer (Seat, ageToGradeLabel, showSeat)
+import Domain.Volunteer (Seat, SeatAssignment, SeatPeriod(..), ageToGradeLabel, seatPeriodToApi, showSeat)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -31,27 +31,28 @@ type CreateVolunteerRequest =
   { educationLevel :: String
   , name :: String
   , age :: Int
-  , seat :: Maybe Seat
+  , seats :: Array SeatAssignment
   }
 
 type State =
   { educationLevel :: EducationLevel
   , name :: String
   , age :: Int
-  , seat :: Maybe Seat
+  , seat114SecondSemester :: Maybe Seat
+  , seat115Summer :: Maybe Seat
   , nameError :: Maybe String
   , isSubmitting :: Boolean
-  , isSeatPickerOpen :: Boolean
+  , openSeatPicker :: Maybe SeatPeriod
   }
 
 data Action
   = SetEducationLevel String
   | SetName String
   | SetAge String
-  | ToggleSeatPicker
+  | ToggleSeatPicker SeatPeriod
   | CloseSeatPicker
-  | ClearSeat
-  | SelectSeat Seat
+  | ClearSeat SeatPeriod
+  | SelectSeat SeatPeriod Seat
   | Submit
   | Receive Input
 
@@ -63,10 +64,11 @@ initialState input =
   { educationLevel: ElementarySchool
   , name: ""
   , age: 7
-  , seat: Nothing
+  , seat114SecondSemester: Nothing
+  , seat115Summer: Nothing
   , nameError: Nothing
   , isSubmitting: input.isSubmitting
-  , isSeatPickerOpen: false
+  , openSeatPicker: Nothing
   }
 
 component :: forall query m. H.Component query Input Output m
@@ -86,14 +88,14 @@ render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.section
     [ HP.class_ (HH.ClassName "student-form-card") ]
-    [ if state.isSeatPickerOpen then
-        HH.div
-          [ HP.class_ (HH.ClassName "seat-picker-backdrop")
-          , HE.onClick \_ -> CloseSeatPicker
-          ]
-          []
-      else
-        HH.text ""
+    [ case state.openSeatPicker of
+        Just _ ->
+          HH.div
+            [ HP.class_ (HH.ClassName "seat-picker-backdrop")
+            , HE.onClick \_ -> CloseSeatPicker
+            ]
+            []
+        Nothing -> HH.text ""
     , HH.h2_ [ HH.text "學生資料" ]
     , HH.div
         [ HP.class_ (HH.ClassName "student-form-grid") ]
@@ -140,57 +142,8 @@ render state =
                     (Array.range 5 15)
                 )
             )
-        , HH.div
-            [ HP.classes
-                ( [ HH.ClassName "form-field"
-                  , HH.ClassName "seat-field"
-                  ]
-                    <> if state.isSeatPickerOpen then
-                        [ HH.ClassName "seat-picker-open" ]
-                      else
-                        []
-                )
-            ]
-            [ HH.span_ [ HH.text "座位" ]
-            , HH.button
-                [ HP.class_ (HH.ClassName "seat-picker-trigger")
-                , HE.onClick \_ -> ToggleSeatPicker
-                ]
-                [ HH.text case state.seat of
-                    Nothing -> "選擇座位"
-                    Just seat -> showSeat (Just seat)
-                ]
-            , HH.div
-                [ HP.class_ (HH.ClassName "seat-picker") ]
-                [ HH.p_ [ HH.text "選擇座位（5 排 × 4 列）" ]
-                , HH.div
-                    [ HP.class_ (HH.ClassName "seat-stage") ]
-                    [ HH.span
-                        [ HP.class_ (HH.ClassName "seat-stage-spacer") ]
-                        []
-                    , HH.span
-                        [ HP.class_ (HH.ClassName "seat-stage-button") ]
-                        [ HH.text "講台" ]
-                    , HH.button
-                        [ HP.class_ (HH.ClassName "seat-clear-button")
-                        , HE.onClick \_ -> ClearSeat
-                        ]
-                        [ HH.text "清除" ]
-                    ]
-                , HH.div
-                    [ HP.class_ (HH.ClassName "seat-grid") ]
-                    ( map
-                        (\seat ->
-                          HH.button
-                            [ HP.class_ (HH.ClassName "seat-button")
-                            , HE.onClick \_ -> SelectSeat seat
-                            ]
-                            [ HH.text (show seat.row <> "-" <> show seat.col) ]
-                        )
-                        seats
-                    )
-                ]
-            ]
+        , seatField "114下座位" Year114SecondSemester state.seat114SecondSemester state.openSeatPicker
+        , seatField "115暑假座位" Year115Summer state.seat115Summer state.openSeatPicker
         , HH.button
             [ HP.class_ (HH.ClassName "student-submit")
             , HP.disabled state.isSubmitting
@@ -217,6 +170,63 @@ formField label control =
     , control
     ]
 
+seatField
+  :: forall m
+   . String
+  -> SeatPeriod
+  -> Maybe Seat
+  -> Maybe SeatPeriod
+  -> H.ComponentHTML Action Slots m
+seatField label period selectedSeat openSeatPicker =
+  HH.div
+    [ HP.classes
+        ( [ HH.ClassName "form-field"
+          , HH.ClassName "seat-field"
+          ]
+            <> if openSeatPicker == Just period then
+                [ HH.ClassName "seat-picker-open" ]
+              else
+                []
+        )
+    ]
+    [ HH.span_ [ HH.text label ]
+    , HH.button
+        [ HP.class_ (HH.ClassName "seat-picker-trigger")
+        , HE.onClick \_ -> ToggleSeatPicker period
+        ]
+        [ HH.text (showSeat selectedSeat) ]
+    , HH.div
+        [ HP.class_ (HH.ClassName "seat-picker") ]
+        [ HH.p_ [ HH.text "選擇座位（5 排 × 4 列）" ]
+        , HH.div
+            [ HP.class_ (HH.ClassName "seat-stage") ]
+            [ HH.span
+                [ HP.class_ (HH.ClassName "seat-stage-spacer") ]
+                []
+            , HH.span
+                [ HP.class_ (HH.ClassName "seat-stage-button") ]
+                [ HH.text "講台" ]
+            , HH.button
+                [ HP.class_ (HH.ClassName "seat-clear-button")
+                , HE.onClick \_ -> ClearSeat period
+                ]
+                [ HH.text "清除" ]
+            ]
+        , HH.div
+            [ HP.class_ (HH.ClassName "seat-grid") ]
+            ( map
+                (\seat ->
+                  HH.button
+                    [ HP.class_ (HH.ClassName "seat-button")
+                    , HE.onClick \_ -> SelectSeat period seat
+                    ]
+                    [ HH.text (show seat.row <> "-" <> show seat.col) ]
+                )
+                seats
+            )
+        ]
+    ]
+
 seats :: Array Seat
 seats = do
   row <- Array.range 1 5
@@ -235,14 +245,25 @@ handleAction = case _ of
   SetAge value -> case Int.fromString value of
     Nothing -> pure unit
     Just age -> H.modify_ _ { age = age }
-  ToggleSeatPicker ->
-    H.modify_ \state -> state { isSeatPickerOpen = not state.isSeatPickerOpen }
+  ToggleSeatPicker period ->
+    H.modify_ \state ->
+      state
+        { openSeatPicker =
+            if state.openSeatPicker == Just period then Nothing
+            else Just period
+        }
   CloseSeatPicker ->
-    H.modify_ _ { isSeatPickerOpen = false }
-  ClearSeat ->
-    H.modify_ _ { seat = Nothing, isSeatPickerOpen = false }
-  SelectSeat seat ->
-    H.modify_ _ { seat = Just seat, isSeatPickerOpen = false }
+    H.modify_ _ { openSeatPicker = Nothing }
+  ClearSeat period -> case period of
+    Year114SecondSemester ->
+      H.modify_ _ { seat114SecondSemester = Nothing, openSeatPicker = Nothing }
+    Year115Summer ->
+      H.modify_ _ { seat115Summer = Nothing, openSeatPicker = Nothing }
+  SelectSeat period seat -> case period of
+    Year114SecondSemester ->
+      H.modify_ _ { seat114SecondSemester = Just seat, openSeatPicker = Nothing }
+    Year115Summer ->
+      H.modify_ _ { seat115Summer = Just seat, openSeatPicker = Nothing }
   Submit -> do
     state <- H.get
     if state.isSubmitting then
@@ -255,7 +276,15 @@ handleAction = case _ of
             { educationLevel: educationLevelToApi state.educationLevel
             , name: String.trim state.name
             , age: state.age
-            , seat: state.seat
+            , seats:
+                Array.catMaybes
+                  [ map
+                      (\seat -> { period: seatPeriodToApi Year114SecondSemester, seat })
+                      state.seat114SecondSemester
+                  , map
+                      (\seat -> { period: seatPeriodToApi Year115Summer, seat })
+                      state.seat115Summer
+                  ]
             }
         )
   Receive input ->

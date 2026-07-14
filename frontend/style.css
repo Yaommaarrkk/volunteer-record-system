@@ -255,7 +255,7 @@ body {
 
 .student-form-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
   gap: 18px;
   align-items: start;
 }
@@ -486,6 +486,30 @@ body {
   border-color: #e4a9a3;
   background: #fff0ee;
   color: #9e352d;
+}
+
+.seat-period-selector {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  margin: 0 0 16px;
+  color: #365b54;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.seat-period-selector label {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.seat-period-selector input {
+  width: 16px;
+  height: 16px;
+  accent-color: #25796b;
+  cursor: pointer;
 }
 
 @keyframes submit-spinner-rotation {

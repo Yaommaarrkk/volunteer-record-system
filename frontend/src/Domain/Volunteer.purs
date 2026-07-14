@@ -1,13 +1,18 @@
 module Domain.Volunteer
   ( Seat
+  , SeatAssignment
+  , SeatPeriod(..)
   , Volunteer
   , ageToGradeLabel
   , displayVolunteer
   , getGrade
+  , seatForPeriod
+  , seatPeriodToApi
   , showSeat
   ) where
 
-import Prelude (show, (-), (<>))
+import Prelude (class Eq, map, show, (-), (==), (<>))
+import Data.Array as Array
 import Data.Maybe (Maybe(..))
 
 type Seat
@@ -15,12 +20,33 @@ type Seat
     , col :: Int
     }
 
+type SeatAssignment
+  = { period :: String
+    , seat :: Seat
+    }
+
+data SeatPeriod
+  = Year114SecondSemester
+  | Year115Summer
+
+derive instance eqSeatPeriod :: Eq SeatPeriod
+
 type Volunteer
   = { id :: Int
     , name :: String
     , age :: Int
-    , seat :: Maybe Seat
+    , seats :: Array SeatAssignment
     }
+
+seatPeriodToApi :: SeatPeriod -> String
+seatPeriodToApi = case _ of
+  Year114SecondSemester -> "YEAR_114_SECOND_SEMESTER"
+  Year115Summer -> "YEAR_115_SUMMER"
+
+seatForPeriod :: SeatPeriod -> Volunteer -> Maybe Seat
+seatForPeriod period volunteer =
+  map _.seat
+    (Array.find (\assignment -> assignment.period == seatPeriodToApi period) volunteer.seats)
 
 ageToGradeLabel :: Int -> String
 ageToGradeLabel = case _ of
@@ -51,5 +77,5 @@ displayVolunteer volunteer =
     <> " (grade "
     <> show (getGrade volunteer)
     <> ", seat "
-    <> showSeat volunteer.seat
+    <> showSeat (seatForPeriod Year114SecondSemester volunteer)
     <> ")"
