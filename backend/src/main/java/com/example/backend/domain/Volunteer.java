@@ -79,6 +79,15 @@ public class Volunteer {
     }
 
     public void addSeat(SeatAssignment seatAssignment) {
+        boolean periodAlreadyExists = seats.stream()
+                .anyMatch(existingSeat ->
+                        existingSeat.getPeriod() == seatAssignment.getPeriod()
+                );
+
+        if (periodAlreadyExists) {
+            throw new IllegalArgumentException("同一個座位期間不能重複");
+        }
+
         seats.add(seatAssignment);
     }
 }
