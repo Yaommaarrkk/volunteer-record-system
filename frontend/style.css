@@ -586,6 +586,10 @@ body {
   border-radius: 12px;
 }
 
+.student-table-scroll.seat-picker-active {
+  overflow: visible;
+}
+
 .student-table {
   width: 100%;
   border-collapse: collapse;
@@ -614,6 +618,140 @@ body {
   background: #f9fcfb;
 }
 
+.student-row-actions,
+.student-editable-value,
+.student-inline-editor,
+.student-edit-actions {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.student-editable-value {
+  min-height: 34px;
+}
+
+.student-edit-button {
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid #79a99e;
+  border-radius: 8px;
+  background: #f3faf7;
+  color: #236a5f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.student-edit-button:hover,
+.student-edit-button:focus-visible {
+  border-color: #25796b;
+  background: #25796b;
+  color: #fff;
+}
+
+.student-field-edit-button,
+.student-edit-cancel-button,
+.student-edit-submit-button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #b9cec8;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.student-field-edit-button {
+  color: #25796b;
+}
+
+.student-edit-cancel-button {
+  border-color: #d5b47b;
+  color: #996715;
+}
+
+.student-edit-submit-button {
+  border-color: #79a99e;
+  color: #25796b;
+}
+
+.student-field-edit-button:hover,
+.student-field-edit-button:focus-visible,
+.student-edit-submit-button:hover,
+.student-edit-submit-button:focus-visible {
+  border-color: #25796b;
+  background: #25796b;
+  color: #fff;
+}
+
+.student-edit-cancel-button:hover,
+.student-edit-cancel-button:focus-visible {
+  border-color: #b27a1e;
+  background: #b27a1e;
+  color: #fff;
+}
+
+.student-inline-input {
+  min-width: 130px;
+  min-height: 36px;
+  border: 1px solid #b9cec8;
+  border-radius: 8px;
+  padding: 6px 9px;
+  background: #fff;
+  color: #17352f;
+  font: inherit;
+}
+
+.student-seat-editor {
+  position: relative;
+  z-index: 181;
+  white-space: normal;
+}
+
+.student-seat-picker-trigger {
+  min-width: 54px;
+  min-height: 36px;
+  border: 1px solid #b9cec8;
+  border-radius: 8px;
+  padding: 5px 9px;
+  background: #fff;
+  color: #17352f;
+  cursor: pointer;
+  font: inherit;
+}
+
+.table-seat-picker-backdrop {
+  position: fixed;
+  z-index: 180;
+  inset: 0;
+  background: rgba(20, 43, 38, 0.12);
+}
+
+.table-seat-picker {
+  position: absolute;
+  z-index: 181;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 270px;
+  padding: 14px;
+  border: 1px solid #c8d7d2;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(31, 84, 74, 0.13);
+}
+
+.seat-button-selected {
+  border-color: #25796b;
+  background: #25796b;
+  color: #fff;
+}
+
 .student-delete-button {
   min-height: 34px;
   padding: 0 13px;
@@ -632,6 +770,80 @@ body {
   border-color: #a84238;
   background: #a84238;
   color: #fff;
+}
+
+.delete-confirm-backdrop {
+  position: fixed;
+  z-index: 300;
+  inset: 0;
+  background: rgba(15, 31, 28, 0.56);
+}
+
+.delete-confirm-dialog {
+  position: fixed;
+  z-index: 301;
+  top: 50%;
+  left: 50%;
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid #e0c0bc;
+  border-radius: 16px;
+  padding: 24px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(17, 34, 30, 0.3);
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.delete-confirm-dialog h3 {
+  margin: 0 0 12px;
+  color: #71342e;
+  font-size: 21px;
+}
+
+.delete-confirm-dialog p {
+  margin: 0;
+  color: #596a66;
+  line-height: 1.65;
+  white-space: normal;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+.delete-confirm-cancel,
+.delete-confirm-submit {
+  min-height: 40px;
+  border-radius: 9px;
+  padding: 0 17px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.delete-confirm-cancel {
+  border: 1px solid #bdcdc8;
+  background: #fff;
+  color: #536d66;
+}
+
+.delete-confirm-submit {
+  border: 1px solid #a84238;
+  background: #a84238;
+  color: #fff;
+}
+
+.delete-confirm-cancel:hover,
+.delete-confirm-cancel:focus-visible {
+  background: #edf4f1;
+}
+
+.delete-confirm-submit:hover,
+.delete-confirm-submit:focus-visible {
+  background: #87342d;
 }
 
 .list-status {

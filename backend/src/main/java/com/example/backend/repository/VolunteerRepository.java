@@ -149,4 +149,58 @@ public class VolunteerRepository {
 
         return jdbcTemplate.update(sql, id);
     }
+
+    public int updateName(Integer id, String name) {
+        String sql = """
+            UPDATE volunteer
+            SET name = ?
+            WHERE id = ?
+            """;
+
+        return jdbcTemplate.update(sql, name, id);
+    }
+
+    public int updateAge(Integer id, Integer age) {
+        String sql = """
+            UPDATE volunteer
+            SET age = ?
+            WHERE id = ?
+            """;
+
+        return jdbcTemplate.update(sql, age, id);
+    }
+
+    public boolean existsById(Integer id) {
+        String sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM volunteer
+                WHERE id = ?
+            )
+            """;
+
+        Boolean exists = jdbcTemplate.queryForObject(sql, Boolean.class, id);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    @Transactional
+    public void updateSeat(Integer id, SeatPeriod period, Integer row, Integer col) {
+        String deleteSql = """
+            DELETE FROM volunteer_seat
+            WHERE volunteer_id = ? AND period = ?
+            """;
+
+        jdbcTemplate.update(deleteSql, id, period.name());
+
+        if (row == null || col == null) {
+            return;
+        }
+
+        String insertSql = """
+            INSERT INTO volunteer_seat (volunteer_id, period, seat_row, seat_col)
+            VALUES (?, ?, ?, ?)
+            """;
+
+        jdbcTemplate.update(insertSql, id, period.name(), row, col);
+    }
 }

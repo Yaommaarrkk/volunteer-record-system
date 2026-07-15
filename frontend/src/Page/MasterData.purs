@@ -10,7 +10,7 @@ import Data.Argonaut.Parser (jsonParser)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
-import Domain.Volunteer (Volunteer)
+import Domain.Volunteer (Seat, SeatPeriod, Volunteer, seatPeriodToApi)
 import Effect.Aff (Aff, delay)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -206,6 +206,12 @@ handleAction = case _ of
         showNotice SuccessNotice message
         volunteersResult <- H.liftAff loadVolunteers
         handleAction (VolunteersLoaded volunteersResult)
+  StudentListOutput (StudentList.UpdateNameRequested id name) ->
+    handleStudentUpdate (updateVolunteerName id name)
+  StudentListOutput (StudentList.UpdateAgeRequested id age) ->
+    handleStudentUpdate (updateVolunteerAge id age)
+  StudentListOutput (StudentList.UpdateSeatRequested id period seat) ->
+    handleStudentUpdate (updateVolunteerSeat id period seat)
   HideNotice version -> do
     state <- H.get
     when (state.noticeVersion == version)
@@ -228,6 +234,23 @@ showNotice kind message = do
   void $ H.fork do
     H.liftAff (delay (Milliseconds 3000.0))
     handleAction (HideNotice version)
+
+handleStudentUpdate
+  :: forall m
+   . MonadAff m
+  => Aff (Either String String)
+  -> H.HalogenM State Action Slots Output m Unit
+handleStudentUpdate request = do
+  H.modify_ _ { isLoading = true, loadError = Nothing }
+  result <- H.liftAff request
+  case result of
+    Left message -> do
+      H.modify_ _ { isLoading = false }
+      showNotice ErrorNotice message
+    Right message -> do
+      showNotice SuccessNotice message
+      volunteersResult <- H.liftAff loadVolunteers
+      handleAction (VolunteersLoaded volunteersResult)
 
 loadVolunteers :: Aff (Either String (Array Volunteer))
 loadVolunteers = do
@@ -268,3 +291,43 @@ deleteVolunteer id = do
       Right (decoded :: MutationResponse) ->
         if decoded.success then Right decoded.message
         else Left decoded.message
+
+updateVolunteerName :: Int -> String -> Aff (Either String String)
+updateVolunteerName id name =
+  patchVolunteer
+    ("http://127.0.0.1:8080/api/volunteer/" <> show id <> "/name")
+    (writeJSON { name })
+
+updateVolunteerAge :: Int -> Int -> Aff (Either String String)
+updateVolunteerAge id age =
+  patchVolunteer
+    ("http://127.0.0.1:8080/api/volunteer/" <> show id <> "/age")
+    (writeJSON { age })
+
+updateVolunteerSeat :: Int -> SeatPeriod -> Maybe Seat -> Aff (Either String String)
+updateVolunteerSeat id period seat =
+  let
+    request = case seat of
+      Nothing -> { row: Nothing, col: Nothing }
+      Just selectedSeat -> { row: Just selectedSeat.row, col: Just selectedSeat.col }
+  in
+    patchVolunteer
+      ( "http://127.0.0.1:8080/api/volunteer/"
+          <> show id
+          <> "/seat/"
+          <> seatPeriodToApi period
+      )
+      (writeJSON request)
+
+patchVolunteer :: String -> String -> Aff (Either String String)
+patchVolunteer url body = case jsonParser body of
+  Left error -> pure (Left error)
+  Right json -> do
+    result <- AX.patch ResponseFormat.string url (RequestBody.json json)
+    pure case result of
+      Left error -> Left (AX.printError error)
+      Right response -> case readJSON response.body of
+        Left errors -> Left ("修改學生回應格式錯誤：" <> show errors)
+        Right (decoded :: MutationResponse) ->
+          if decoded.success then Right decoded.message
+          else Left decoded.message

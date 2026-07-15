@@ -96,7 +96,7 @@ render state =
             ]
             []
         Nothing -> HH.text ""
-    , HH.h2_ [ HH.text "學生資料" ]
+    , HH.h2_ [ HH.text "加入資料" ]
     , HH.div
         [ HP.class_ (HH.ClassName "student-form-grid") ]
         [ formField "類型"
@@ -151,10 +151,10 @@ render state =
             ]
             if state.isSubmitting then
               [ HH.span [ HP.class_ (HH.ClassName "submit-spinner") ] []
-              , HH.text "新增中…"
+              , HH.text "送出中…"
               ]
             else
-              [ HH.text "新增學生" ]
+              [ HH.text "送出" ]
         ]
     ]
 
