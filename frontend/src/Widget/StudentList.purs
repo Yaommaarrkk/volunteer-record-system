@@ -11,7 +11,7 @@ import Data.Array as Array
 import Data.Int as Int
 import Data.Maybe (Maybe(..))
 import Data.String.Common as String
-import Domain.Volunteer (Seat, SeatPeriod(..), Volunteer, ageToGradeLabel, seatForPeriod, showSeat)
+import Domain.Volunteer (Seat, SeatPeriod(..), Volunteer, ageToGradeLabel, formatUpdatedAt, seatForPeriod, showSeat)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -230,6 +230,7 @@ renderVolunteerList state
                     , HH.th_ [ HH.text "年級" ]
                     , HH.th_ [ HH.text "座位" ]
                     , HH.th_ [ HH.text "操作" ]
+                    , HH.th_ [ HH.text "修改時間" ]
                     ]
                 ]
             , HH.tbody_
@@ -272,6 +273,7 @@ renderVolunteer :: forall m. State -> Volunteer -> H.ComponentHTML Action Slots 
 renderVolunteer state volunteer =
   let
     isEditing = state.editingVolunteerId == Just volunteer.id
+    updatedAt = formatUpdatedAt volunteer.updatedAt
   in
   HH.tr_
     [ HH.td_ [ HH.text (show volunteer.id) ]
@@ -291,6 +293,13 @@ renderVolunteer state volunteer =
                 , HE.onClick \_ -> AskDelete volunteer
                 ]
                 [ HH.text "刪除" ]
+            ]
+        ]
+    , HH.td_
+        [ HH.div
+            [ HP.class_ (HH.ClassName "student-updated-at") ]
+            [ HH.span_ [ HH.text updatedAt.date ]
+            , HH.span_ [ HH.text updatedAt.time ]
             ]
         ]
     ]

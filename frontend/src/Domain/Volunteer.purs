@@ -5,6 +5,7 @@ module Domain.Volunteer
   , Volunteer
   , ageToGradeLabel
   , displayVolunteer
+  , formatUpdatedAt
   , getGrade
   , seatForPeriod
   , seatPeriodToApi
@@ -38,6 +39,12 @@ type Volunteer
     , updatedAt :: String
     , seats :: Array SeatAssignment
     }
+
+foreign import formatUpdatedAt
+  :: String
+  -> { date :: String
+     , time :: String
+     }
 
 seatPeriodToApi :: SeatPeriod -> String
 seatPeriodToApi = case _ of
