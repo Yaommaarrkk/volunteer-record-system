@@ -262,9 +262,10 @@ body {
 
 .activity-form-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(150px, 0.8fr) minmax(0, 1.3fr) auto;
+  grid-template-columns: minmax(180px, 260px) minmax(150px, 180px) 100px;
   gap: 18px;
-  align-items: start;
+  align-items: end;
+  justify-content: start;
 }
 
 .form-field {
@@ -303,61 +304,6 @@ body {
 
 .seat-field {
   position: relative;
-}
-
-.activity-note-field {
-  position: relative;
-}
-
-.activity-note-field.activity-note-editor-open {
-  z-index: 3;
-}
-
-.activity-note-editor {
-  position: absolute;
-  z-index: 3;
-  top: 78px;
-  right: 0;
-  display: grid;
-  width: min(430px, calc(100vw - 48px));
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid #c8d7d2;
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 18px 40px rgba(31, 84, 74, 0.18);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-6px);
-  visibility: hidden;
-  transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
-}
-
-.activity-note-editor-open .activity-note-editor {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
-  visibility: visible;
-}
-
-.activity-note-editor textarea,
-.activity-table-note-editor textarea {
-  width: 100%;
-  min-height: 180px;
-  resize: vertical;
-  border: 1px solid #c8d7d2;
-  border-radius: 10px;
-  padding: 12px;
-  background: #fff;
-  color: #17352f;
-  font: inherit;
-  line-height: 1.55;
-}
-
-.activity-note-editor textarea:focus,
-.activity-table-note-editor textarea:focus {
-  border-color: #25796b;
-  outline: 3px solid rgba(37, 121, 107, 0.13);
 }
 
 .activity-note-done {
@@ -692,10 +638,6 @@ body {
   overflow: visible;
 }
 
-.activity-table-scroll.activity-note-editing {
-  overflow: visible;
-}
-
 .student-table {
   width: 100%;
   border-collapse: collapse;
@@ -722,13 +664,6 @@ body {
 
 .student-table tbody tr:hover {
   background: #f9fcfb;
-}
-
-.activity-table .activity-note-cell {
-  position: relative;
-  width: 38%;
-  min-width: 240px;
-  white-space: normal;
 }
 
 .activity-drag-cell {
@@ -838,32 +773,6 @@ body {
   border-color: #17231f;
   outline: 2px solid #fff;
   outline-offset: -4px;
-}
-
-.activity-note-value {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  justify-content: space-between;
-  min-width: 220px;
-  max-width: 430px;
-  line-height: 1.55;
-  white-space: pre-wrap;
-}
-
-.activity-table-note-editor {
-  position: absolute;
-  z-index: 181;
-  top: calc(100% + 8px);
-  left: 12px;
-  display: grid;
-  width: min(430px, calc(100vw - 48px));
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid #c8d7d2;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 12px 28px rgba(31, 84, 74, 0.18);
 }
 
 .student-row-actions,
@@ -1138,6 +1047,394 @@ body {
   color: #fff;
 }
 
+.hour-record-primary-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(140px, 1fr) minmax(165px, 1.1fr) minmax(250px, 2fr) minmax(110px, 0.7fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.hour-record-secondary-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: end;
+  margin-top: 18px;
+}
+
+.hour-record-submit {
+  min-width: 106px;
+  margin-top: 0;
+}
+
+.hour-record-note-input-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+}
+
+.hour-record-note-input-wrap input {
+  border-radius: 10px 0 0 10px;
+}
+
+.hour-record-note-expand {
+  min-height: 44px;
+  border: 1px solid #c8d7d2;
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  background: #f2f7f5;
+  color: #236a5f;
+  cursor: pointer;
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.hour-record-note-expand:hover,
+.hour-record-note-expand:focus-visible {
+  background: #25796b;
+  color: #fff;
+}
+
+.hour-record-date-inputs {
+  display: grid;
+  grid-template-columns: auto 86px;
+  gap: 7px;
+  justify-content: start;
+}
+
+.hour-record-date-inputs > input {
+  width: 86px;
+}
+
+.hour-record-year-button {
+  min-width: 70px;
+  min-height: 44px;
+  border: 1px solid #8db8ad;
+  border-radius: 10px;
+  background: #edf7f3;
+  color: #236a5f;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+}
+
+.hour-record-year-editor {
+  display: grid;
+  grid-template-columns: 68px 30px 30px;
+  gap: 4px;
+}
+
+.hour-record-year-editor input {
+  min-width: 0;
+  padding: 7px;
+}
+
+.hour-record-year-editor button {
+  min-height: 44px;
+  border: 1px solid #b9cec8;
+  border-radius: 8px;
+  background: #fff;
+  color: #25796b;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.hour-record-participant-field {
+  min-width: 0;
+  position: relative;
+}
+
+.hour-record-participant-field .seat-picker-trigger {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.participant-name-summary {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hour-record-participant-field.seat-picker-open {
+  z-index: 5;
+}
+
+.hour-record-seat-picker {
+  width: 440px;
+}
+
+.seat-period-select {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+  color: #58716a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.seat-period-select select {
+  width: 82px;
+  min-height: 36px;
+  border: 1px solid #c8d7d2;
+  border-radius: 8px;
+  padding: 5px 9px;
+  background: #fff;
+  color: #17352f;
+  font: inherit;
+}
+
+.participant-seat-stage {
+  display: grid;
+  grid-template-columns: 150px 1fr 120px;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed #cfddd8;
+}
+
+.participant-unseated-dropdown {
+  position: relative;
+  width: 150px;
+}
+
+.participant-unseated-trigger {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #b9cec8;
+  border-radius: 8px;
+  padding: 5px 7px;
+  background: #fff;
+  color: #17352f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.participant-unseated-menu {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  width: 190px;
+  max-height: 220px;
+  gap: 5px;
+  overflow-y: auto;
+  border: 1px solid #b9cec8;
+  border-radius: 10px;
+  padding: 7px;
+  background: #fff;
+  box-shadow: 0 12px 26px rgba(23, 53, 47, 0.2);
+}
+
+.participant-unseated-menu p {
+  margin: 5px;
+  color: #71827e;
+  font-size: 12px;
+}
+
+.participant-unseated-option {
+  min-height: 36px;
+  border: 1px solid #d5e1dd;
+  border-radius: 7px;
+  padding: 6px 9px;
+  background: #f7faf9;
+  color: #365b54;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.participant-unseated-option:hover,
+.participant-unseated-option-selected {
+  border-color: #25796b;
+  background: #25796b;
+  box-shadow: inset 4px 0 0 #8ed1c1, 0 2px 7px rgba(37, 121, 107, 0.22);
+  color: #fff;
+}
+
+.participant-seat-actions {
+  display: grid;
+  grid-template-columns: 54px 54px;
+  gap: 8px;
+  justify-self: end;
+}
+
+.participant-seat-stage .seat-stage-button {
+  justify-self: center;
+}
+
+.seat-confirm-button {
+  width: 54px;
+  height: 54px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.seat-confirm-button:hover,
+.seat-confirm-button:focus-visible {
+  background: #2563eb;
+  color: #fff;
+}
+
+.participant-seat-grid {
+  align-items: stretch;
+}
+
+.participant-seat-grid .seat-button {
+  aspect-ratio: auto;
+  min-height: 58px;
+  padding: 5px 3px;
+}
+
+.participant-seat-button {
+  display: grid;
+  gap: 2px;
+  place-items: center;
+  opacity: 0.48;
+}
+
+.participant-seat-button strong {
+  max-width: 82px;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.participant-seat-button:hover,
+.participant-seat-selected {
+  border-color: #25796b;
+  background: #25796b;
+  color: #fff;
+  opacity: 1;
+}
+
+.participant-seat-empty {
+  opacity: 0.22;
+}
+
+.participant-field-error .seat-picker-trigger {
+  border-color: #c43f36;
+  background: #fff1f0;
+  box-shadow: 0 0 0 3px rgba(196, 63, 54, 0.12);
+  color: #a2342d;
+}
+
+.hour-record-note-modal {
+  position: fixed;
+  z-index: 301;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: min(680px, calc(100vw - 32px));
+  gap: 14px;
+  border: 1px solid #c8d7d2;
+  border-radius: 16px;
+  padding: 22px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(17, 34, 30, 0.3);
+  transform: translate(-50%, -50%);
+}
+
+.hour-record-note-modal h3 {
+  margin: 0;
+}
+
+.hour-record-note-modal textarea {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  border: 1px solid #c8d7d2;
+  border-radius: 10px;
+  padding: 12px;
+  color: #17352f;
+  font: inherit;
+  line-height: 1.6;
+}
+
+.hour-record-list-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.hour-record-batch-delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.hour-record-table tbody tr {
+  cursor: default;
+  user-select: none;
+}
+
+.hour-record-table tbody tr.hour-record-row-selected,
+.hour-record-table tbody tr.hour-record-row-selected:hover {
+  background: #dbeafe;
+  box-shadow: inset 3px 0 0 #2563eb;
+}
+
+.hour-record-selection-mark {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid #b8cbc5;
+  border-radius: 6px;
+  background: #fff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.hour-record-type-tag {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 5px 11px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.hour-record-note-cell {
+  min-width: 210px;
+  max-width: 360px;
+  line-height: 1.5;
+  white-space: pre-wrap !important;
+}
+
+.hour-record-copy-button {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid #6e8fa7;
+  border-radius: 8px;
+  background: #f4f9fc;
+  color: #315f7e;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.hour-record-copy-button:hover,
+.hour-record-copy-button:focus-visible {
+  background: #315f7e;
+  color: #fff;
+}
+
 @media (max-width: 720px) {
   .home {
     align-items: start;
@@ -1202,15 +1499,31 @@ body {
     flex-direction: column;
   }
 
+  .hour-record-primary-row,
+  .hour-record-secondary-row {
+    grid-template-columns: 1fr;
+  }
+
+  .hour-record-submit {
+    width: 100%;
+  }
+
+  .hour-record-seat-picker {
+    right: auto;
+    left: 0;
+    width: min(440px, calc(100vw - 60px));
+  }
+
+  .hour-record-list-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .seat-picker {
     position: static;
     width: 100%;
   }
 
-  .activity-note-editor {
-    right: auto;
-    left: 0;
-  }
 }
 
 @media (min-width: 721px) and (max-width: 980px) {
@@ -1219,6 +1532,10 @@ body {
   }
 
   .activity-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hour-record-primary-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

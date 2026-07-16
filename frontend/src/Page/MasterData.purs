@@ -320,8 +320,6 @@ handleAction = case _ of
     handleActivityUpdate (updateActivityName id name)
   ActivityListOutput (ActivityList.UpdateTypeRequested id defaultType) ->
     handleActivityUpdate (updateActivityType id defaultType)
-  ActivityListOutput (ActivityList.UpdateNoteRequested id defaultNote) ->
-    handleActivityUpdate (updateActivityNote id defaultNote)
   ActivityListOutput (ActivityList.ReorderRequested defaultType activityIds) ->
     handleActivityUpdate (updateActivityOrder defaultType activityIds)
   ActivityListOutput (ActivityList.UpdateColorRequested defaultType tagColor) ->
@@ -484,13 +482,6 @@ updateActivityType id defaultType =
     ("http://127.0.0.1:8080/api/activity/" <> show id <> "/default-type")
     (writeJSON { defaultType })
     "修改活動類型"
-
-updateActivityNote :: Int -> String -> Aff (Either String String)
-updateActivityNote id defaultNote =
-  patchMutation
-    ("http://127.0.0.1:8080/api/activity/" <> show id <> "/default-note")
-    (writeJSON { defaultNote })
-    "修改活動備註"
 
 updateActivityOrder :: String -> Array Int -> Aff (Either String String)
 updateActivityOrder defaultType activityIds =

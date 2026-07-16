@@ -6,7 +6,6 @@ import com.example.backend.dto.request.CreateActivityRequest;
 import com.example.backend.dto.request.ReorderActivitiesRequest;
 import com.example.backend.dto.request.UpdateActivityColorRequest;
 import com.example.backend.dto.request.UpdateActivityNameRequest;
-import com.example.backend.dto.request.UpdateActivityNoteRequest;
 import com.example.backend.dto.request.UpdateActivityTypeRequest;
 import com.example.backend.dto.response.Response;
 import com.example.backend.repository.ActivityRepository;
@@ -55,11 +54,9 @@ public class ActivityController {
                     .body(ApiResponse.fail("預設類型不能為空"));
         }
 
-        String defaultNote = request.defaultNote() == null ? "" : request.defaultNote().trim();
         int insertedRows = activityRepository.insert(
                 request.name().trim(),
-                request.defaultType(),
-                defaultNote
+                request.defaultType()
         );
 
         if (insertedRows != 1) {
@@ -116,19 +113,6 @@ public class ActivityController {
         }
 
         return ResponseEntity.ok(ApiResponse.success("修改預設類型成功", null));
-    }
-
-    @PatchMapping("/activity/{id}/default-note")
-    public ResponseEntity<Response<Void>> updateActivityNote(
-            @PathVariable Integer id,
-            @RequestBody UpdateActivityNoteRequest request
-    ) {
-        String defaultNote = request.defaultNote() == null ? "" : request.defaultNote().trim();
-        if (activityRepository.updateDefaultNote(id, defaultNote) == 0) {
-            return activityNotFound(id);
-        }
-
-        return ResponseEntity.ok(ApiResponse.success("修改預設備註成功", null));
     }
 
     @PutMapping("/activities/order")

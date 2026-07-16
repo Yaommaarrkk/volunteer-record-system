@@ -21,7 +21,6 @@ type Activity =
   { id :: Int
   , name :: String
   , defaultType :: String
-  , defaultNote :: String
   , sortOrder :: Int
   , tagColor :: String
   , updatedAt :: String

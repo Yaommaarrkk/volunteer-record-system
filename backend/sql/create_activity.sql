@@ -6,7 +6,6 @@ CREATE TABLE activity (
     default_type VARCHAR(40) NOT NULL CHECK (
         default_type IN ('TEACHING', 'COMPANION_READING', 'PLAY', 'DAILY_INTERACTION', 'PASSIVE')
     ),
-    default_note TEXT NOT NULL DEFAULT '',
     sort_order INTEGER NOT NULL CHECK (sort_order > 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP

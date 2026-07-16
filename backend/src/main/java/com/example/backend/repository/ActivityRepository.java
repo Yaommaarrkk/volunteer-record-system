@@ -19,7 +19,6 @@ public class ActivityRepository {
                     resultSet.getInt("id"),
                     resultSet.getString("name"),
                     ActivityType.valueOf(resultSet.getString("default_type")),
-                    resultSet.getString("default_note"),
                     resultSet.getInt("sort_order"),
                     resultSet.getString("tag_color"),
                     resultSet.getTimestamp("updated_at").toInstant()
@@ -35,7 +34,6 @@ public class ActivityRepository {
                 activity.id,
                 activity.name,
                 activity.default_type,
-                activity.default_note,
                 activity.sort_order,
                 activity_type_color.tag_color,
                 activity.updated_at
@@ -48,11 +46,10 @@ public class ActivityRepository {
         return jdbcTemplate.query(sql, ACTIVITY_ROW_MAPPER);
     }
 
-    public int insert(String name, ActivityType defaultType, String defaultNote) {
+    public int insert(String name, ActivityType defaultType) {
         String sql = """
-            INSERT INTO activity (name, default_type, default_note, sort_order)
+            INSERT INTO activity (name, default_type, sort_order)
             VALUES (
-                ?,
                 ?,
                 ?,
                 (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM activity WHERE default_type = ?)
@@ -63,7 +60,6 @@ public class ActivityRepository {
                 sql,
                 name,
                 defaultType.name(),
-                defaultNote,
                 defaultType.name()
         );
     }
@@ -126,16 +122,6 @@ public class ActivityRepository {
         );
         normalizeOrder(oldType);
         return updatedRows;
-    }
-
-    public int updateDefaultNote(Integer id, String defaultNote) {
-        String sql = """
-            UPDATE activity
-            SET default_note = ?
-            WHERE id = ?
-            """;
-
-        return jdbcTemplate.update(sql, defaultNote, id);
     }
 
     @Transactional

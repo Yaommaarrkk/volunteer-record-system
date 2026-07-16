@@ -40,7 +40,6 @@ type State =
   , editingField :: Maybe EditField
   , draftName :: String
   , draftDefaultType :: String
-  , draftDefaultNote :: String
   , pendingDelete :: Maybe Activity
   , selectedType :: Maybe String
   , draggedActivityId :: Maybe Int
@@ -50,7 +49,6 @@ type State =
 data EditField
   = EditingName
   | EditingDefaultType
-  | EditingDefaultNote
 
 data Action
   = Receive Input
@@ -61,10 +59,8 @@ data Action
   | ToggleActivityEdit Int
   | BeginNameEdit Activity
   | BeginTypeEdit Activity
-  | BeginNoteEdit Activity
   | SetDraftName String
   | SetDraftType String
-  | SetDraftNote String
   | SelectTypeFilter String
   | StartDragging Int
   | DragOver DragEvent
@@ -78,14 +74,12 @@ data Action
   | CancelFieldEdit
   | SubmitName Int
   | SubmitType Int
-  | SubmitNote Int
 
 data Output
   = RetryRequested
   | DeleteRequested Int
   | UpdateNameRequested Int String
   | UpdateTypeRequested Int String
-  | UpdateNoteRequested Int String
   | ReorderRequested String (Array Int)
   | UpdateColorRequested String String
 
@@ -100,7 +94,6 @@ component =
         , editingField: Nothing
         , draftName: ""
         , draftDefaultType: "TEACHING"
-        , draftDefaultNote: ""
         , pendingDelete: Nothing
         , selectedType: Nothing
         , draggedActivityId: Nothing
@@ -119,13 +112,7 @@ render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.section
     [ HP.class_ (HH.ClassName "student-list-card") ]
-    [ if isNoteEditing state.editingField then
-        HH.div
-          [ HP.class_ (HH.ClassName "table-seat-picker-backdrop")
-          , HE.onClick \_ -> CancelFieldEdit
-          ]
-          []
-      else if state.openColorPickerFor /= Nothing then
+    [ if state.openColorPickerFor /= Nothing then
         HH.div
           [ HP.class_ (HH.ClassName "table-seat-picker-backdrop")
           , HE.onClick \_ -> CloseColorPicker
@@ -194,14 +181,9 @@ renderActivityList state
   | otherwise =
       HH.div
         [ HP.classes
-            ( [ HH.ClassName "student-table-scroll"
-              , HH.ClassName "activity-table-scroll"
-              ]
-                <> if isNoteEditing state.editingField then
-                    [ HH.ClassName "activity-note-editing" ]
-                  else
-                    []
-            )
+            [ HH.ClassName "student-table-scroll"
+            , HH.ClassName "activity-table-scroll"
+            ]
         ]
         [ HH.table
             [ HP.classes [ HH.ClassName "student-table", HH.ClassName "activity-table" ] ]
@@ -214,7 +196,6 @@ renderActivityList state
                         <> [ HH.th_ [ HH.text "編號" ]
                            , HH.th_ [ HH.text "活動名" ]
                            , HH.th_ [ HH.text "預設類型" ]
-                           , HH.th_ [ HH.text "預設備註" ]
                            , HH.th_ [ HH.text "操作" ]
                            , HH.th_ [ HH.text "修改時間" ]
                            ]
@@ -255,7 +236,6 @@ renderActivity state activity =
           <> [ HH.td_ [ HH.text (show activity.id) ]
              , renderNameCell state isEditing activity
              , renderTypeCell state isEditing activity
-             , renderNoteCell state isEditing activity
              , HH.td_
           [ HH.div
               [ HP.class_ (HH.ClassName "student-row-actions") ]
@@ -409,37 +389,6 @@ tagColors =
   , "#64748B"
   ]
 
-renderNoteCell :: forall m. State -> Boolean -> Activity -> H.ComponentHTML Action Slots m
-renderNoteCell state isEditing activity =
-  HH.td
-    [ HP.class_ (HH.ClassName "activity-note-cell") ]
-    if isEditing && isEditingField EditingDefaultNote state.editingField then
-      [ HH.div
-          [ HP.class_ (HH.ClassName "activity-table-note-editor") ]
-          [ HH.textarea
-              [ HP.attr (HH.AttrName "rows") "8"
-              , HP.placeholder "請輸入預設備註"
-              , HP.value state.draftDefaultNote
-              , HE.onValueInput SetDraftNote
-              ]
-          , renderEditActions "預設備註" (SubmitNote activity.id)
-          ]
-      ]
-    else
-      [ HH.div
-          [ HP.class_ (HH.ClassName "activity-note-value") ]
-          [ HH.span_
-              [ HH.text
-                  if String.trim activity.defaultNote == "" then
-                    "-"
-                  else
-                    activity.defaultNote
-              ]
-          , if isEditing then editIconButton "預設備註" (BeginNoteEdit activity)
-            else HH.text ""
-          ]
-      ]
-
 isEditingField :: EditField -> Maybe EditField -> Boolean
 isEditingField expected = case _ of
   Just EditingName -> case expected of
@@ -448,15 +397,7 @@ isEditingField expected = case _ of
   Just EditingDefaultType -> case expected of
     EditingDefaultType -> true
     _ -> false
-  Just EditingDefaultNote -> case expected of
-    EditingDefaultNote -> true
-    _ -> false
   Nothing -> false
-
-isNoteEditing :: Maybe EditField -> Boolean
-isNoteEditing = case _ of
-  Just EditingDefaultNote -> true
-  _ -> false
 
 activityTypeOption :: forall m. String -> String -> H.ComponentHTML Action Slots m
 activityTypeOption value label = HH.option [ HP.value value ] [ HH.text label ]
@@ -556,16 +497,8 @@ handleAction = case _ of
         , editingField = Just EditingDefaultType
         , draftDefaultType = activity.defaultType
         }
-  BeginNoteEdit activity ->
-    H.modify_
-      _
-        { editingActivityId = Just activity.id
-        , editingField = Just EditingDefaultNote
-        , draftDefaultNote = activity.defaultNote
-        }
   SetDraftName name -> H.modify_ _ { draftName = name }
   SetDraftType defaultType -> H.modify_ _ { draftDefaultType = defaultType }
-  SetDraftNote note -> H.modify_ _ { draftDefaultNote = note }
   SelectTypeFilter value ->
     H.modify_
       _
@@ -628,11 +561,6 @@ handleAction = case _ of
     state <- H.get
     H.raise (UpdateTypeRequested id state.draftDefaultType)
     H.modify_ _ { editingField = Nothing }
-  SubmitNote id -> do
-    state <- H.get
-    H.raise (UpdateNoteRequested id (String.trim state.draftDefaultNote))
-    H.modify_ _ { editingField = Nothing }
-
 moveId :: Int -> Int -> Array Int -> Array Int
 moveId draggedId targetId ids
   | draggedId == targetId = ids
