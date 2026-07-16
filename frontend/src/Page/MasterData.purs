@@ -10,6 +10,7 @@ import Data.Argonaut.Parser (jsonParser)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
+import Domain.Activity (Activity)
 import Domain.Volunteer (Seat, SeatPeriod, Volunteer, seatPeriodToApi)
 import Effect.Aff (Aff, delay)
 import Effect.Aff.Class (class MonadAff)
@@ -19,6 +20,8 @@ import Halogen.HTML.Properties as HP
 import Router.Route (MasterDataType(..))
 import Simple.JSON (readJSON, writeJSON)
 import Type.Proxy (Proxy(..))
+import Widget.ActivityForm as ActivityForm
+import Widget.ActivityList as ActivityList
 import Widget.StudentForm as StudentForm
 import Widget.StudentList as StudentList
 
@@ -28,9 +31,15 @@ _studentForm = Proxy :: Proxy "studentFormSlot"
 
 _studentList = Proxy :: Proxy "studentListSlot"
 
+_activityForm = Proxy :: Proxy "activityFormSlot"
+
+_activityList = Proxy :: Proxy "activityListSlot"
+
 type Slots
   = ( studentFormSlot :: StudentForm.Slot Unit
     , studentListSlot :: StudentList.Slot Unit
+    , activityFormSlot :: ActivityForm.Slot Unit
+    , activityListSlot :: ActivityList.Slot Unit
     )
 
 type Input = MasterDataType
@@ -38,6 +47,7 @@ type Input = MasterDataType
 type State =
   { masterDataType :: MasterDataType
   , volunteers :: Array Volunteer
+  , activities :: Array Activity
   , isLoading :: Boolean
   , loadError :: Maybe String
   , isSubmitting :: Boolean
@@ -49,6 +59,12 @@ type VolunteersResponse =
   { success :: Boolean
   , message :: String
   , data :: Array Volunteer
+  }
+
+type ActivitiesResponse =
+  { success :: Boolean
+  , message :: String
+  , data :: Array Activity
   }
 
 type MutationResponse =
@@ -68,10 +84,14 @@ type Notice =
 
 data Action
   = Initialize
+  | LoadCurrentData
   | Receive Input
   | VolunteersLoaded (Either String (Array Volunteer))
+  | ActivitiesLoaded (Either String (Array Activity))
   | StudentFormOutput StudentForm.Output
   | StudentListOutput StudentList.Output
+  | ActivityFormOutput ActivityForm.Output
+  | ActivityListOutput ActivityList.Output
   | HideNotice Int
 
 data Output = OutputUnit
@@ -80,6 +100,7 @@ initialState :: Input -> State
 initialState masterDataType =
   { masterDataType
   , volunteers: []
+  , activities: []
   , isLoading: true
   , loadError: Nothing
   , isSubmitting: false
@@ -104,10 +125,7 @@ component =
 render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
 render state = case state.masterDataType of
   Students -> renderStudents state
-  Activities ->
-    HH.main
-      [ HP.class_ (HH.ClassName "master-data-page") ]
-      [ HH.h1_ [ HH.text "修改活動資料" ] ]
+  Activities -> renderActivities state
 
 renderStudents :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
 renderStudents state =
@@ -140,6 +158,35 @@ renderStudents state =
         StudentListOutput
     ]
 
+renderActivities :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
+renderActivities state =
+  HH.main
+    [ HP.class_ (HH.ClassName "master-data-page") ]
+    [ renderNotice state.notice
+    , HH.header
+        [ HP.class_ (HH.ClassName "master-data-header") ]
+        [ HH.div_
+            [ HH.p [ HP.class_ (HH.ClassName "page-eyebrow") ] [ HH.text "ACTIVITY MANAGEMENT" ]
+            , HH.h1_ [ HH.text "修改活動資料" ]
+            ]
+        ]
+    , HH.slot
+        _activityForm
+        unit
+        ActivityForm.component
+        { isSubmitting: state.isSubmitting }
+        ActivityFormOutput
+    , HH.slot
+        _activityList
+        unit
+        ActivityList.component
+        { activities: state.activities
+        , isLoading: state.isLoading
+        , loadError: state.loadError
+        }
+        ActivityListOutput
+    ]
+
 renderNotice :: forall m. Maybe Notice -> H.ComponentHTML Action Slots m
 renderNotice = case _ of
   Nothing -> HH.text ""
@@ -160,16 +207,37 @@ handleAction
   => Action
   -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
-  Initialize -> do
-    result <- H.liftAff loadVolunteers
-    handleAction (VolunteersLoaded result)
-  Receive masterDataType ->
-    H.modify_ _ { masterDataType = masterDataType }
+  Initialize -> handleAction LoadCurrentData
+  LoadCurrentData -> do
+    state <- H.get
+    case state.masterDataType of
+      Students -> do
+        result <- H.liftAff loadVolunteers
+        handleAction (VolunteersLoaded result)
+      Activities -> do
+        result <- H.liftAff loadActivities
+        handleAction (ActivitiesLoaded result)
+  Receive masterDataType -> do
+    state <- H.get
+    when (state.masterDataType /= masterDataType) do
+      H.modify_
+        _
+          { masterDataType = masterDataType
+          , isLoading = true
+          , loadError = Nothing
+          , notice = Nothing
+          }
+      handleAction LoadCurrentData
   VolunteersLoaded result -> case result of
     Left message ->
       H.modify_ _ { isLoading = false, loadError = Just message }
     Right volunteers ->
       H.modify_ _ { volunteers = volunteers, isLoading = false, loadError = Nothing }
+  ActivitiesLoaded result -> case result of
+    Left message ->
+      H.modify_ _ { isLoading = false, loadError = Just message }
+    Right activities ->
+      H.modify_ _ { activities = activities, isLoading = false, loadError = Nothing }
   StudentFormOutput (StudentForm.SubmitVolunteer request) -> do
     H.modify_ _ { isSubmitting = true, notice = Nothing }
     result <- H.liftAff
@@ -212,6 +280,52 @@ handleAction = case _ of
     handleStudentUpdate (updateVolunteerAge id age)
   StudentListOutput (StudentList.UpdateSeatRequested id period seat) ->
     handleStudentUpdate (updateVolunteerSeat id period seat)
+  ActivityFormOutput (ActivityForm.SubmitActivity request) -> do
+    H.modify_ _ { isSubmitting = true, notice = Nothing }
+    result <- H.liftAff
+      $ sequential
+      $ (\postResult _ -> postResult)
+          <$> parallel (createActivity request)
+          <*> parallel (delay (Milliseconds 1000.0))
+    case result of
+      Left message -> do
+        H.modify_ _ { isSubmitting = false }
+        showNotice ErrorNotice message
+      Right message -> do
+        H.modify_
+          _
+            { isSubmitting = false
+            , isLoading = true
+            , loadError = Nothing
+            }
+        showNotice SuccessNotice message
+        activitiesResult <- H.liftAff loadActivities
+        handleAction (ActivitiesLoaded activitiesResult)
+  ActivityListOutput ActivityList.RetryRequested -> do
+    H.modify_ _ { isLoading = true, loadError = Nothing }
+    result <- H.liftAff loadActivities
+    handleAction (ActivitiesLoaded result)
+  ActivityListOutput (ActivityList.DeleteRequested id) -> do
+    H.modify_ _ { isLoading = true, loadError = Nothing }
+    result <- H.liftAff (deleteActivity id)
+    case result of
+      Left message -> do
+        H.modify_ _ { isLoading = false }
+        showNotice ErrorNotice message
+      Right message -> do
+        showNotice SuccessNotice message
+        activitiesResult <- H.liftAff loadActivities
+        handleAction (ActivitiesLoaded activitiesResult)
+  ActivityListOutput (ActivityList.UpdateNameRequested id name) ->
+    handleActivityUpdate (updateActivityName id name)
+  ActivityListOutput (ActivityList.UpdateTypeRequested id defaultType) ->
+    handleActivityUpdate (updateActivityType id defaultType)
+  ActivityListOutput (ActivityList.UpdateNoteRequested id defaultNote) ->
+    handleActivityUpdate (updateActivityNote id defaultNote)
+  ActivityListOutput (ActivityList.ReorderRequested defaultType activityIds) ->
+    handleActivityUpdate (updateActivityOrder defaultType activityIds)
+  ActivityListOutput (ActivityList.UpdateColorRequested defaultType tagColor) ->
+    handleActivityUpdate (updateActivityColor defaultType tagColor)
   HideNotice version -> do
     state <- H.get
     when (state.noticeVersion == version)
@@ -252,6 +366,23 @@ handleStudentUpdate request = do
       volunteersResult <- H.liftAff loadVolunteers
       handleAction (VolunteersLoaded volunteersResult)
 
+handleActivityUpdate
+  :: forall m
+   . MonadAff m
+  => Aff (Either String String)
+  -> H.HalogenM State Action Slots Output m Unit
+handleActivityUpdate request = do
+  H.modify_ _ { isLoading = true, loadError = Nothing }
+  result <- H.liftAff request
+  case result of
+    Left message -> do
+      H.modify_ _ { isLoading = false }
+      showNotice ErrorNotice message
+    Right message -> do
+      showNotice SuccessNotice message
+      activitiesResult <- H.liftAff loadActivities
+      handleAction (ActivitiesLoaded activitiesResult)
+
 loadVolunteers :: Aff (Either String (Array Volunteer))
 loadVolunteers = do
   result <- AX.get ResponseFormat.string "http://127.0.0.1:8080/api/volunteers"
@@ -260,6 +391,15 @@ loadVolunteers = do
     Right response -> case readJSON response.body of
       Left errors -> Left ("學生資料格式錯誤：" <> show errors)
       Right (decoded :: VolunteersResponse) -> Right decoded.data
+
+loadActivities :: Aff (Either String (Array Activity))
+loadActivities = do
+  result <- AX.get ResponseFormat.string "http://127.0.0.1:8080/api/activities"
+  pure case result of
+    Left error -> Left (AX.printError error)
+    Right response -> case readJSON response.body of
+      Left errors -> Left ("活動資料格式錯誤：" <> show errors)
+      Right (decoded :: ActivitiesResponse) -> Right decoded.data
 
 createVolunteer :: StudentForm.CreateVolunteerRequest -> Aff (Either String String)
 createVolunteer volunteerRq = case jsonParser (writeJSON volunteerRq) of
@@ -278,6 +418,10 @@ createVolunteer volunteerRq = case jsonParser (writeJSON volunteerRq) of
           if decoded.success then Right decoded.message
           else Left decoded.message
 
+createActivity :: ActivityForm.CreateActivityRequest -> Aff (Either String String)
+createActivity activityRequest =
+  postMutation "http://127.0.0.1:8080/api/activity" (writeJSON activityRequest) "新增活動"
+
 deleteVolunteer :: Int -> Aff (Either String String)
 deleteVolunteer id = do
   result <-
@@ -291,6 +435,14 @@ deleteVolunteer id = do
       Right (decoded :: MutationResponse) ->
         if decoded.success then Right decoded.message
         else Left decoded.message
+
+deleteActivity :: Int -> Aff (Either String String)
+deleteActivity id = do
+  result <-
+    AX.delete
+      ResponseFormat.string
+      ("http://127.0.0.1:8080/api/activity/" <> show id)
+  pure (decodeMutationResponse "刪除活動" result)
 
 updateVolunteerName :: Int -> String -> Aff (Either String String)
 updateVolunteerName id name =
@@ -319,6 +471,41 @@ updateVolunteerSeat id period seat =
       )
       (writeJSON request)
 
+updateActivityName :: Int -> String -> Aff (Either String String)
+updateActivityName id name =
+  patchMutation
+    ("http://127.0.0.1:8080/api/activity/" <> show id <> "/name")
+    (writeJSON { name })
+    "修改活動名"
+
+updateActivityType :: Int -> String -> Aff (Either String String)
+updateActivityType id defaultType =
+  patchMutation
+    ("http://127.0.0.1:8080/api/activity/" <> show id <> "/default-type")
+    (writeJSON { defaultType })
+    "修改活動類型"
+
+updateActivityNote :: Int -> String -> Aff (Either String String)
+updateActivityNote id defaultNote =
+  patchMutation
+    ("http://127.0.0.1:8080/api/activity/" <> show id <> "/default-note")
+    (writeJSON { defaultNote })
+    "修改活動備註"
+
+updateActivityOrder :: String -> Array Int -> Aff (Either String String)
+updateActivityOrder defaultType activityIds =
+  putMutation
+    "http://127.0.0.1:8080/api/activities/order"
+    (writeJSON { defaultType, activityIds })
+    "修改活動排序"
+
+updateActivityColor :: String -> String -> Aff (Either String String)
+updateActivityColor defaultType tagColor =
+  patchMutation
+    ("http://127.0.0.1:8080/api/activity-types/" <> defaultType <> "/color")
+    (writeJSON { tagColor })
+    "修改活動類型顏色"
+
 patchVolunteer :: String -> String -> Aff (Either String String)
 patchVolunteer url body = case jsonParser body of
   Left error -> pure (Left error)
@@ -331,3 +518,36 @@ patchVolunteer url body = case jsonParser body of
         Right (decoded :: MutationResponse) ->
           if decoded.success then Right decoded.message
           else Left decoded.message
+
+postMutation :: String -> String -> String -> Aff (Either String String)
+postMutation url body operation = case jsonParser body of
+  Left error -> pure (Left error)
+  Right json -> do
+    result <- AX.post ResponseFormat.string url (Just (RequestBody.json json))
+    pure (decodeMutationResponse operation result)
+
+patchMutation :: String -> String -> String -> Aff (Either String String)
+patchMutation url body operation = case jsonParser body of
+  Left error -> pure (Left error)
+  Right json -> do
+    result <- AX.patch ResponseFormat.string url (RequestBody.json json)
+    pure (decodeMutationResponse operation result)
+
+putMutation :: String -> String -> String -> Aff (Either String String)
+putMutation url body operation = case jsonParser body of
+  Left error -> pure (Left error)
+  Right json -> do
+    result <- AX.put ResponseFormat.string url (Just (RequestBody.json json))
+    pure (decodeMutationResponse operation result)
+
+decodeMutationResponse
+  :: String
+  -> Either AX.Error (AX.Response String)
+  -> Either String String
+decodeMutationResponse operation = case _ of
+  Left error -> Left (AX.printError error)
+  Right response -> case readJSON response.body of
+    Left errors -> Left (operation <> "回應格式錯誤：" <> show errors)
+    Right (decoded :: MutationResponse) ->
+      if decoded.success then Right decoded.message
+      else Left decoded.message

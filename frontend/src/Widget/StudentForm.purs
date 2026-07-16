@@ -96,7 +96,7 @@ render state =
             ]
             []
         Nothing -> HH.text ""
-    , HH.h2_ [ HH.text "加入資料" ]
+    , HH.h2_ [ HH.text "添加學生" ]
     , HH.div
         [ HP.class_ (HH.ClassName "student-form-grid") ]
         [ formField "類型"

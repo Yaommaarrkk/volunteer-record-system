@@ -260,6 +260,13 @@ body {
   align-items: start;
 }
 
+.activity-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(150px, 0.8fr) minmax(0, 1.3fr) auto;
+  gap: 18px;
+  align-items: start;
+}
+
 .form-field {
   display: grid;
   gap: 8px;
@@ -296,6 +303,74 @@ body {
 
 .seat-field {
   position: relative;
+}
+
+.activity-note-field {
+  position: relative;
+}
+
+.activity-note-field.activity-note-editor-open {
+  z-index: 3;
+}
+
+.activity-note-editor {
+  position: absolute;
+  z-index: 3;
+  top: 78px;
+  right: 0;
+  display: grid;
+  width: min(430px, calc(100vw - 48px));
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #c8d7d2;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(31, 84, 74, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  visibility: hidden;
+  transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+}
+
+.activity-note-editor-open .activity-note-editor {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.activity-note-editor textarea,
+.activity-table-note-editor textarea {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  border: 1px solid #c8d7d2;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+  color: #17352f;
+  font: inherit;
+  line-height: 1.55;
+}
+
+.activity-note-editor textarea:focus,
+.activity-table-note-editor textarea:focus {
+  border-color: #25796b;
+  outline: 3px solid rgba(37, 121, 107, 0.13);
+}
+
+.activity-note-done {
+  min-height: 38px;
+  justify-self: end;
+  border: 0;
+  border-radius: 9px;
+  padding: 0 18px;
+  background: #25796b;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
 }
 
 .seat-field.seat-picker-open {
@@ -562,6 +637,33 @@ body {
   margin-bottom: 18px;
 }
 
+.activity-list-filter {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin: 0 0 16px;
+  color: #687b76;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.activity-list-filter label {
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+}
+
+.activity-list-filter select {
+  min-width: 150px;
+  min-height: 38px;
+  border: 1px solid #c8d7d2;
+  border-radius: 9px;
+  padding: 6px 10px;
+  background: #fff;
+  color: #17352f;
+  font: inherit;
+}
+
 .list-heading h2 {
   margin-bottom: 5px;
 }
@@ -587,6 +689,10 @@ body {
 }
 
 .student-table-scroll.seat-picker-active {
+  overflow: visible;
+}
+
+.activity-table-scroll.activity-note-editing {
   overflow: visible;
 }
 
@@ -616,6 +722,148 @@ body {
 
 .student-table tbody tr:hover {
   background: #f9fcfb;
+}
+
+.activity-table .activity-note-cell {
+  position: relative;
+  width: 38%;
+  min-width: 240px;
+  white-space: normal;
+}
+
+.activity-drag-cell {
+  width: 56px;
+  text-align: center;
+}
+
+.activity-drag-handle {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid #1f2926;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2926;
+  cursor: grab;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -4px;
+  line-height: 1;
+  user-select: none;
+}
+
+.activity-drag-handle:active {
+  cursor: grabbing;
+}
+
+.activity-row-dragging {
+  background: #edf6f3;
+  opacity: 0.52;
+}
+
+.activity-order-button {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid #1f2926;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2926;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.activity-order-button:hover,
+.activity-order-button:focus-visible {
+  background: #1f2926;
+  color: #fff;
+}
+
+.activity-tag-wrapper {
+  position: relative;
+  z-index: 181;
+}
+
+.activity-type-tag {
+  min-height: 30px;
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 12px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.activity-type-tag:hover,
+.activity-type-tag:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.75), 0 3px 10px rgba(20, 43, 38, 0.18);
+  outline: none;
+}
+
+.activity-color-picker {
+  position: absolute;
+  z-index: 181;
+  top: calc(100% + 8px);
+  left: 0;
+  display: grid;
+  width: 142px;
+  grid-template-columns: repeat(3, 34px);
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #c8d7d2;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(31, 84, 74, 0.18);
+}
+
+.activity-color-option {
+  width: 34px;
+  height: 34px;
+  border: 2px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.activity-color-option:hover,
+.activity-color-option:focus-visible,
+.activity-color-option-selected {
+  border-color: #17231f;
+  outline: 2px solid #fff;
+  outline-offset: -4px;
+}
+
+.activity-note-value {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-width: 220px;
+  max-width: 430px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.activity-table-note-editor {
+  position: absolute;
+  z-index: 181;
+  top: calc(100% + 8px);
+  left: 12px;
+  display: grid;
+  width: min(430px, calc(100vw - 48px));
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #c8d7d2;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(31, 84, 74, 0.18);
 }
 
 .student-row-actions,
@@ -945,14 +1193,32 @@ body {
     grid-template-columns: 1fr;
   }
 
+  .activity-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-list-filter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .seat-picker {
     position: static;
     width: 100%;
+  }
+
+  .activity-note-editor {
+    right: auto;
+    left: 0;
   }
 }
 
 @media (min-width: 721px) and (max-width: 980px) {
   .student-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .activity-form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
