@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -101,7 +102,15 @@ public class UserController {
 
     @DeleteMapping("/volunteer/{id}")
     public ResponseEntity<Response<Void>> deleteVolunteer(@PathVariable Integer id) {
-        int deletedRows = volunteerRepository.deleteById(id);
+        int deletedRows;
+        try {
+            deletedRows = volunteerRepository.deleteById(id);
+        } catch (DataIntegrityViolationException error) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.fail("這位學生已有時數紀錄，不能直接刪除"));
+        }
+
         if (deletedRows == 0) {
             return ResponseEntity
                     .status(HttpStatus.NOT_FOUND)
