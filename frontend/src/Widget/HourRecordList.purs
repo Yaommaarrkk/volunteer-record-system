@@ -46,6 +46,7 @@ data Action
   = Receive Input
   | SelectRecord Int MouseEvent
   | CopyRecord HourRecord MouseEvent
+  | AskDeleteRecord Int MouseEvent
   | AskDelete
   | CancelDelete
   | ConfirmDelete
@@ -192,13 +193,22 @@ renderRecord selectedIds index record =
               ]
           ]
       , HH.td_
-          [ HH.button
-              [ HP.class_ (HH.ClassName "hour-record-copy-button")
-              , HP.attr (HH.AttrName "title") "複製到上方輸入區（不含學生）"
-              , HP.attr (HH.AttrName "aria-label") "複製這筆時數資料"
-              , HE.onClick (CopyRecord record)
+          [ HH.div
+              [ HP.class_ (HH.ClassName "student-row-actions") ]
+              [ HH.button
+                  [ HP.class_ (HH.ClassName "hour-record-copy-button")
+                  , HP.attr (HH.AttrName "title") "複製到上方輸入區（不含學生）"
+                  , HP.attr (HH.AttrName "aria-label") "複製這筆時數資料"
+                  , HE.onClick (CopyRecord record)
+                  ]
+                  [ HH.text "⧉" ]
+              , HH.button
+                  [ HP.class_ (HH.ClassName "student-delete-button")
+                  , HP.attr (HH.AttrName "title") "刪除這筆時數紀錄"
+                  , HE.onClick (AskDeleteRecord record.id)
+                  ]
+                  [ HH.text "刪除" ]
               ]
-              [ HH.text "⧉" ]
           ]
       ]
 
@@ -288,6 +298,14 @@ handleAction = case _ of
           , note: record.note
           }
       )
+  AskDeleteRecord id event -> do
+    H.liftEffect (Event.stopPropagation (MouseEvent.toEvent event))
+    H.modify_
+      _
+        { selectedIds = [ id ]
+        , selectionAnchor = Nothing
+        , isDeleteDialogOpen = true
+        }
   AskDelete -> do
     state <- H.get
     if Array.null state.selectedIds then pure unit
