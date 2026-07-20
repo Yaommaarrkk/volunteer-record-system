@@ -23,6 +23,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Web.HTML.HTMLElement as HTMLElement
+import Widget.OutsideClick as OutsideClick
 
 foreign import isPositiveOneDecimal :: String -> Boolean
 
@@ -79,7 +80,10 @@ type State =
   }
 
 data Action
-  = Receive Input
+  = Initialize
+  | Receive Input
+  | ClickedOutsideParticipant
+  | ClickedOutsideHours
   | SelectActivity String
   | SetActivityType String
   | SetDate String
@@ -148,7 +152,8 @@ component =
     , eval:
         H.mkEval
           H.defaultEval
-            { handleAction = handleAction
+            { initialize = Just Initialize
+            , handleAction = handleAction
             , receive = Just <<< Receive
             }
     }
@@ -159,22 +164,6 @@ render state =
     [ HP.class_ (HH.ClassName "student-form-card hour-record-form-card") ]
     [ if state.isNoteModalOpen then renderNoteModal state.note
       else HH.text ""
-    , if state.isSeatPickerOpen then
-        HH.div
-          [ HP.class_ (HH.ClassName "seat-picker-backdrop")
-          , HE.onClick \_ -> CloseSeatPicker
-          ]
-          []
-      else
-        HH.text ""
-    , if state.isHoursPickerOpen then
-        HH.div
-          [ HP.class_ (HH.ClassName "seat-picker-backdrop")
-          , HE.onClick \_ -> CloseHoursPicker
-          ]
-          []
-      else
-        HH.text ""
     , HH.h2_ [ HH.text "登錄時數條" ]
     , HH.div
         [ HP.class_ (HH.ClassName "hour-record-primary-row") ]
@@ -546,6 +535,11 @@ handleAction
   => Action
   -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
+  Initialize -> do
+    void $ H.subscribe (ClickedOutsideParticipant <$ OutsideClick.outsideClickEmitter ".hour-record-participant-field")
+    void $ H.subscribe (ClickedOutsideHours <$ OutsideClick.outsideClickEmitter ".hour-record-hours-field")
+  ClickedOutsideParticipant -> H.modify_ _ { isSeatPickerOpen = false, isOtherStudentsOpen = false }
+  ClickedOutsideHours -> H.modify_ _ { isHoursPickerOpen = false }
   Receive input -> do
     state <- H.get
     let firstActivity = Array.head input.activities

@@ -13,10 +13,12 @@ import Data.Maybe (Maybe(..))
 import Data.String.Common as String
 import Domain.EducationLevel (EducationLevel(..), educationLevelToApi)
 import Domain.Volunteer (Seat, SeatAssignment, SeatPeriod(..), ageToGradeLabel, seatPeriodToApi, showSeat)
+import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Widget.OutsideClick as OutsideClick
 
 type Slot id = forall query. H.Slot query Output id
 
@@ -46,7 +48,8 @@ type State =
   }
 
 data Action
-  = SetEducationLevel String
+  = Initialize
+  | SetEducationLevel String
   | SetName String
   | SetAge String
   | ToggleSeatPicker SeatPeriod
@@ -71,7 +74,7 @@ initialState input =
   , openSeatPicker: Nothing
   }
 
-component :: forall query m. H.Component query Input Output m
+component :: forall query m. MonadEffect m => H.Component query Input Output m
 component =
   H.mkComponent
     { initialState
@@ -79,7 +82,8 @@ component =
     , eval:
         H.mkEval
           H.defaultEval
-            { handleAction = handleAction
+            { initialize = Just Initialize
+            , handleAction = handleAction
             , receive = Just <<< Receive
             }
     }
@@ -88,15 +92,7 @@ render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.section
     [ HP.class_ (HH.ClassName "student-form-card") ]
-    [ case state.openSeatPicker of
-        Just _ ->
-          HH.div
-            [ HP.class_ (HH.ClassName "seat-picker-backdrop")
-            , HE.onClick \_ -> CloseSeatPicker
-            ]
-            []
-        Nothing -> HH.text ""
-    , HH.h2_ [ HH.text "添加學生" ]
+    [ HH.h2_ [ HH.text "添加學生" ]
     , HH.div
         [ HP.class_ (HH.ClassName "student-form-grid") ]
         [ formField "類型"
@@ -235,9 +231,11 @@ seats = do
 
 handleAction
   :: forall m
-   . Action
+   . MonadEffect m
+  => Action
   -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
+  Initialize -> void $ H.subscribe (CloseSeatPicker <$ OutsideClick.outsideClickEmitter ".seat-field")
   SetEducationLevel value ->
     H.modify_ _ { educationLevel = educationLevelFromApi value }
   SetName name ->

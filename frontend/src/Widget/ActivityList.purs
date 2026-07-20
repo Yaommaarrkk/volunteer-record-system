@@ -20,6 +20,7 @@ import Halogen.HTML.Properties as HP
 import Web.Event.Event as Event
 import Web.HTML.Event.DragEvent (DragEvent)
 import Web.HTML.Event.DragEvent as DragEvent
+import Widget.OutsideClick as OutsideClick
 
 type Slot id = forall query. H.Slot query Output id
 
@@ -51,7 +52,8 @@ data EditField
   | EditingDefaultType
 
 data Action
-  = Receive Input
+  = Initialize
+  | Receive Input
   | Retry
   | AskDelete Activity
   | CancelDelete
@@ -103,7 +105,8 @@ component =
     , eval:
         H.mkEval
           H.defaultEval
-            { handleAction = handleAction
+            { initialize = Just Initialize
+            , handleAction = handleAction
             , receive = Just <<< Receive
             }
     }
@@ -112,15 +115,7 @@ render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.section
     [ HP.class_ (HH.ClassName "student-list-card") ]
-    [ if state.openColorPickerFor /= Nothing then
-        HH.div
-          [ HP.class_ (HH.ClassName "table-seat-picker-backdrop")
-          , HE.onClick \_ -> CloseColorPicker
-          ]
-          []
-      else
-        HH.text ""
-    , case state.pendingDelete of
+    [ case state.pendingDelete of
         Nothing -> HH.text ""
         Just activity -> renderDeleteDialog activity
     , HH.div
@@ -460,6 +455,7 @@ handleAction
   => Action
   -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
+  Initialize -> void $ H.subscribe (CloseColorPicker <$ OutsideClick.outsideClickEmitter ".activity-tag-wrapper")
   Receive input ->
     H.modify_
       _
