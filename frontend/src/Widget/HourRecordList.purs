@@ -45,6 +45,7 @@ type State =
 data Action
   = Receive Input
   | SelectRecord Int MouseEvent
+  | ToggleRecord Int Int MouseEvent
   | CopyRecord HourRecord MouseEvent
   | AskDeleteRecord Int MouseEvent
   | AskDelete
@@ -87,7 +88,7 @@ render state =
         [ HP.class_ (HH.ClassName "list-heading") ]
         [ HH.div_
             [ HH.h2_ [ HH.text "登錄歷史" ]
-            , HH.p_ [ HH.text "單擊選取；Ctrl 跳選；Shift 連續選取" ]
+            , HH.p_ [ HH.text "點左側方框可多選；Ctrl 跳選；Shift 連續選取" ]
             ]
         , HH.div
             [ HP.class_ (HH.ClassName "hour-record-list-actions") ]
@@ -167,8 +168,13 @@ renderRecord selectedIds index record =
       , HE.onClick (SelectRecord index)
       ]
       [ HH.td_
-          [ HH.span
-              [ HP.class_ (HH.ClassName "hour-record-selection-mark") ]
+          [ HH.button
+              [ HP.class_ (HH.ClassName "hour-record-selection-mark")
+              , HP.attr (HH.AttrName "role") "checkbox"
+              , HP.attr (HH.AttrName "aria-checked") (if isSelected then "true" else "false")
+              , HP.attr (HH.AttrName "aria-label") (if isSelected then "取消選取這筆紀錄" else "選取這筆紀錄")
+              , HE.onClick (ToggleRecord record.id index)
+              ]
               [ HH.text if isSelected then "✓" else "" ]
           ]
       , HH.td_ [ HH.text record.activityDate ]
@@ -287,6 +293,17 @@ handleAction = case _ of
               }
         else
           H.modify_ _ { selectedIds = [ record.id ], selectionAnchor = Just index }
+  ToggleRecord id index event -> do
+    H.liftEffect (Event.stopPropagation (MouseEvent.toEvent event))
+    H.modify_ \state ->
+      state
+        { selectedIds =
+            if Array.elem id state.selectedIds then
+              Array.filter (_ /= id) state.selectedIds
+            else
+              Array.snoc state.selectedIds id
+        , selectionAnchor = Just index
+        }
   CopyRecord record event -> do
     H.liftEffect (Event.stopPropagation (MouseEvent.toEvent event))
     H.raise

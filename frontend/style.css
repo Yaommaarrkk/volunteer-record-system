@@ -1473,8 +1473,16 @@ body {
   border-radius: 6px;
   background: #fff;
   color: #1d4ed8;
+  cursor: pointer;
   font-size: 13px;
   font-weight: 900;
+  padding: 0;
+}
+
+.hour-record-selection-mark:hover,
+.hour-record-selection-mark:focus-visible {
+  border-color: #2563eb;
+  outline: 2px solid rgba(37, 99, 235, 0.18);
 }
 
 .hour-record-type-tag {
