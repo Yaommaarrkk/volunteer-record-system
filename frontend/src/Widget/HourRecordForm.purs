@@ -17,15 +17,17 @@ import Data.String.Pattern (Pattern(..))
 import Domain.Activity (Activity, activityTypeLabel)
 import Domain.HourRecord (CopiedHourRecord)
 import Domain.Volunteer (Seat, SeatPeriod(..), Volunteer, getGrade, seatForPeriod, seatPeriodToApi)
+import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Web.HTML.HTMLElement as HTMLElement
 import Widget.OutsideClick as OutsideClick
 
 foreign import isPositiveOneDecimal :: String -> Boolean
+foreign import focusHoursInputAfterRender :: Effect Unit
+foreign import focusNoteInputAfterClear :: Effect Unit
 
 type Slot id = forall query. H.Slot query Output id
 
@@ -92,6 +94,7 @@ data Action
   | CloseHoursPicker
   | SelectQuickHours String
   | SetNote String
+  | ClearNote
   | BeginYearEdit
   | SetYearDraft String
   | SaveYear
@@ -139,7 +142,7 @@ initialState input =
     , hoursError: Nothing
     , participantError: Nothing
     , isSubmitting: input.isSubmitting
-    , clearParticipantsAfterSubmit: false
+    , clearParticipantsAfterSubmit: true
     , copyVersion: input.copyVersion
     , successfulSubmitVersion: input.successfulSubmitVersion
     }
@@ -199,11 +202,23 @@ render state =
             [ HH.span_ [ HH.text "備註" ]
             , HH.div
                 [ HP.class_ (HH.ClassName "hour-record-note-input-wrap") ]
-                [ HH.input
-                    [ HP.type_ HP.InputText
-                    , HP.placeholder "輸入備註，或按右側按鈕放大"
-                    , HP.value state.note
-                    , HE.onValueInput SetNote
+                [ HH.div
+                    [ HP.class_ (HH.ClassName "hour-record-note-text-wrap") ]
+                    [ HH.input
+                        [ HP.type_ HP.InputText
+                        , HP.attr (HH.AttrName "data-hour-record-note-input") ""
+                        , HP.placeholder "輸入備註，或按右側按鈕放大"
+                        , HP.value state.note
+                        , HE.onValueInput SetNote
+                        ]
+                    , HH.button
+                        [ HP.class_ (HH.ClassName "hour-record-note-clear")
+                        , HP.disabled (String.trim state.note == "")
+                        , HP.attr (HH.AttrName "aria-label") "清除目前備註"
+                        , HP.attr (HH.AttrName "title") "清除備註"
+                        , HE.onClick \_ -> ClearNote
+                        ]
+                        [ HH.text "×" ]
                     ]
                 , HH.button
                     [ HP.class_ (HH.ClassName "hour-record-note-expand")
@@ -221,7 +236,7 @@ render state =
                 , HP.checked state.clearParticipantsAfterSubmit
                 , HE.onChecked SetClearParticipantsAfterSubmit
                 ]
-            , HH.span_ [ HH.text "送出後清空參與學生" ]
+            , HH.span_ [ HH.text "送出後清空學生" ]
             ]
         , HH.button
             [ HP.class_ (HH.ClassName "student-submit hour-record-submit")
@@ -274,16 +289,13 @@ renderActivityTypeSelect selectedType =
 typeOption :: forall m. String -> H.ComponentHTML Action Slots m
 typeOption value = HH.option [ HP.value value ] [ HH.text (activityTypeLabel value) ]
 
-hoursInputRef :: H.RefLabel
-hoursInputRef = H.RefLabel "hour-record-hours-input"
-
 renderHoursPicker :: forall m. State -> H.ComponentHTML Action Slots m
 renderHoursPicker state =
   HH.div
     [ HP.class_ (HH.ClassName "seat-picker hour-record-hours-picker") ]
     [ HH.input
-        [ HP.ref hoursInputRef
-        , HP.type_ HP.InputText
+        [ HP.type_ HP.InputText
+        , HP.attr (HH.AttrName "data-hour-record-hours-input") ""
         , HP.autofocus true
         , HP.placeholder "例如 1 或 1.5"
         , HP.value state.hoursText
@@ -610,10 +622,7 @@ handleAction = case _ of
         , isSeatPickerOpen = false
         , isOtherStudentsOpen = false
         }
-    inputElement <- H.getHTMLElementRef hoursInputRef
-    case inputElement of
-      Nothing -> pure unit
-      Just element -> H.liftEffect (HTMLElement.focus element)
+    H.liftEffect focusHoursInputAfterRender
   CloseHoursPicker -> H.modify_ _ { isHoursPickerOpen = false }
   SelectQuickHours value ->
     H.modify_
@@ -623,6 +632,9 @@ handleAction = case _ of
         , isHoursPickerOpen = false
         }
   SetNote note -> H.modify_ _ { note = note }
+  ClearNote -> do
+    H.modify_ _ { note = "" }
+    H.liftEffect focusNoteInputAfterClear
   BeginYearEdit -> H.modify_ \state -> state { isEditingYear = true, yearDraft = show state.defaultYear }
   SetYearDraft year -> H.modify_ _ { yearDraft = year }
   SaveYear -> do
