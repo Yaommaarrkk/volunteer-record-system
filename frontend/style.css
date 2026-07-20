@@ -1056,7 +1056,7 @@ body {
 
 .hour-record-secondary-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 16px;
   align-items: end;
   margin-top: 18px;
@@ -1065,6 +1065,84 @@ body {
 .hour-record-submit {
   min-width: 106px;
   margin-top: 0;
+}
+
+.hour-record-clear-participants {
+  display: inline-flex;
+  min-height: 44px;
+  gap: 8px;
+  align-items: center;
+  color: #365b54;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.hour-record-clear-participants input {
+  width: 18px;
+  height: 18px;
+  accent-color: #25796b;
+}
+
+.hour-record-hours-field {
+  position: relative;
+}
+
+.hour-record-hours-field.hours-picker-open {
+  z-index: 5;
+}
+
+.hour-record-hours-field.hours-picker-open .hour-record-hours-picker {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.hour-record-hours-picker {
+  display: grid;
+  width: 310px;
+  gap: 10px;
+}
+
+.hour-record-hours-picker > input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #b9cec8;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #17352f;
+  font: inherit;
+}
+
+.hour-record-hours-picker > input:focus {
+  border-color: #25796b;
+  outline: 3px solid rgba(37, 121, 107, 0.13);
+}
+
+.hour-record-quick-hours-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px;
+}
+
+.hour-record-quick-hours-row button {
+  min-height: 40px;
+  border: 1px solid #8db8ad;
+  border-radius: 8px;
+  background: #edf7f3;
+  color: #236a5f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.hour-record-quick-hours-row button:hover,
+.hour-record-quick-hours-row button:focus-visible {
+  background: #25796b;
+  color: #fff;
 }
 
 .hour-record-note-input-wrap {

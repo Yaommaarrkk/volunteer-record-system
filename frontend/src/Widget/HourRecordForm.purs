@@ -17,10 +17,12 @@ import Data.String.Pattern (Pattern(..))
 import Domain.Activity (Activity, activityTypeLabel)
 import Domain.HourRecord (CopiedHourRecord)
 import Domain.Volunteer (Seat, SeatPeriod(..), Volunteer, getGrade, seatForPeriod, seatPeriodToApi)
+import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Web.HTML.HTMLElement as HTMLElement
 
 foreign import isPositiveOneDecimal :: String -> Boolean
 
@@ -36,6 +38,7 @@ type Input =
   , isSubmitting :: Boolean
   , copiedRecord :: Maybe CopiedHourRecord
   , copyVersion :: Int
+  , successfulSubmitVersion :: Int
   }
 
 type CreateHourRecordRequest =
@@ -62,6 +65,7 @@ type State =
   , selectedSeatPeriod :: SeatPeriod
   , isSeatPickerOpen :: Boolean
   , isOtherStudentsOpen :: Boolean
+  , isHoursPickerOpen :: Boolean
   , isNoteModalOpen :: Boolean
   , isEditingYear :: Boolean
   , yearDraft :: String
@@ -69,7 +73,9 @@ type State =
   , hoursError :: Maybe String
   , participantError :: Maybe String
   , isSubmitting :: Boolean
+  , clearParticipantsAfterSubmit :: Boolean
   , copyVersion :: Int
+  , successfulSubmitVersion :: Int
   }
 
 data Action
@@ -78,6 +84,9 @@ data Action
   | SetActivityType String
   | SetDate String
   | SetHours String
+  | OpenHoursPicker
+  | CloseHoursPicker
+  | SelectQuickHours String
   | SetNote String
   | BeginYearEdit
   | SetYearDraft String
@@ -92,6 +101,7 @@ data Action
   | ConfirmVolunteers
   | OpenNoteModal
   | CloseNoteModal
+  | SetClearParticipantsAfterSubmit Boolean
   | Submit
 
 data Output
@@ -117,6 +127,7 @@ initialState input =
     , selectedSeatPeriod: Year114SecondSemester
     , isSeatPickerOpen: false
     , isOtherStudentsOpen: false
+    , isHoursPickerOpen: false
     , isNoteModalOpen: false
     , isEditingYear: false
     , yearDraft: show input.defaultYear
@@ -124,10 +135,12 @@ initialState input =
     , hoursError: Nothing
     , participantError: Nothing
     , isSubmitting: input.isSubmitting
+    , clearParticipantsAfterSubmit: false
     , copyVersion: input.copyVersion
+    , successfulSubmitVersion: input.successfulSubmitVersion
     }
 
-component :: forall query m. H.Component query Input Output m
+component :: forall query m. MonadEffect m => H.Component query Input Output m
 component =
   H.mkComponent
     { initialState
@@ -154,6 +167,14 @@ render state =
           []
       else
         HH.text ""
+    , if state.isHoursPickerOpen then
+        HH.div
+          [ HP.class_ (HH.ClassName "seat-picker-backdrop")
+          , HE.onClick \_ -> CloseHoursPicker
+          ]
+          []
+      else
+        HH.text ""
     , HH.h2_ [ HH.text "登錄時數條" ]
     , HH.div
         [ HP.class_ (HH.ClassName "hour-record-primary-row") ]
@@ -161,16 +182,25 @@ render state =
         , formField "活動名" (renderActivitySelect state)
         , renderDateField state
         , renderParticipantField state
-        , HH.label
-            [ HP.class_ (HH.ClassName "form-field hour-record-hours-field") ]
+        , HH.div
+            [ HP.classes
+                ( [ HH.ClassName "form-field"
+                  , HH.ClassName "hour-record-hours-field"
+                  ]
+                    <> if state.isHoursPickerOpen then
+                        [ HH.ClassName "hours-picker-open" ]
+                      else
+                        []
+                )
+            ]
             [ HH.span_ [ HH.text "時數" ]
-            , HH.input
-                [ HP.type_ HP.InputText
-                , HP.placeholder "例如 1 或 1.5"
-                , HP.value state.hoursText
-                , HE.onValueInput SetHours
+            , HH.button
+                [ HP.class_ (HH.ClassName "seat-picker-trigger")
+                , HE.onClick \_ -> OpenHoursPicker
                 ]
+                [ HH.text if String.trim state.hoursText == "" then "輸入時數" else state.hoursText ]
             , renderFieldError state.hoursError
+            , renderHoursPicker state
             ]
         ]
     , HH.div
@@ -194,6 +224,15 @@ render state =
                     ]
                     [ HH.text "⛶" ]
                 ]
+            ]
+        , HH.label
+            [ HP.class_ (HH.ClassName "hour-record-clear-participants") ]
+            [ HH.input
+                [ HP.type_ HP.InputCheckbox
+                , HP.checked state.clearParticipantsAfterSubmit
+                , HE.onChecked SetClearParticipantsAfterSubmit
+                ]
+            , HH.span_ [ HH.text "送出後清空參與學生" ]
             ]
         , HH.button
             [ HP.class_ (HH.ClassName "student-submit hour-record-submit")
@@ -245,6 +284,38 @@ renderActivityTypeSelect selectedType =
 
 typeOption :: forall m. String -> H.ComponentHTML Action Slots m
 typeOption value = HH.option [ HP.value value ] [ HH.text (activityTypeLabel value) ]
+
+hoursInputRef :: H.RefLabel
+hoursInputRef = H.RefLabel "hour-record-hours-input"
+
+renderHoursPicker :: forall m. State -> H.ComponentHTML Action Slots m
+renderHoursPicker state =
+  HH.div
+    [ HP.class_ (HH.ClassName "seat-picker hour-record-hours-picker") ]
+    [ HH.input
+        [ HP.ref hoursInputRef
+        , HP.type_ HP.InputText
+        , HP.autofocus true
+        , HP.placeholder "例如 1 或 1.5"
+        , HP.value state.hoursText
+        , HE.onValueInput SetHours
+        ]
+    , renderQuickHoursRow [ "0.1", "0.2", "0.3", "0.4", "0.5" ]
+    , renderQuickHoursRow [ "0.6", "0.7", "0.8", "0.9", "1" ]
+    ]
+
+renderQuickHoursRow :: forall m. Array String -> H.ComponentHTML Action Slots m
+renderQuickHoursRow values =
+  HH.div
+    [ HP.class_ (HH.ClassName "hour-record-quick-hours-row") ]
+    ( map
+        (\value ->
+          HH.button
+            [ HE.onClick \_ -> SelectQuickHours value ]
+            [ HH.text value ]
+        )
+        values
+    )
 
 renderDateField :: forall m. State -> H.ComponentHTML Action Slots m
 renderDateField state =
@@ -471,7 +542,8 @@ renderFieldError = case _ of
 
 handleAction
   :: forall m
-   . Action
+   . MonadEffect m
+  => Action
   -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   Receive input -> do
@@ -480,6 +552,8 @@ handleAction = case _ of
     let hasNewCopy = input.copyVersion /= state.copyVersion
     let copiedDate = input.copiedRecord >>= parseIsoDate
     let hasSavedYearUpdate = input.defaultYear /= state.savedDefaultYear
+    let hasSuccessfulSubmit = input.successfulSubmitVersion /= state.successfulSubmitVersion
+    let shouldClearParticipants = hasSuccessfulSubmit && state.clearParticipantsAfterSubmit
     let activeYear =
           if hasNewCopy then fromMaybe state.defaultYear (copiedDate <#> _.year)
           else if hasSavedYearUpdate then input.defaultYear
@@ -503,12 +577,14 @@ handleAction = case _ of
         , dateText = if hasNewCopy then fromMaybe state.dateText (copiedDate <#> \date -> show date.month <> "/" <> show date.day) else state.dateText
         , hoursText = if hasNewCopy then fromMaybe state.hoursText (input.copiedRecord <#> \record -> show record.hours) else state.hoursText
         , note = if hasNewCopy then fromMaybe state.note (input.copiedRecord <#> _.note) else state.note
-        , selectedVolunteerIds = if hasNewCopy then [] else state.selectedVolunteerIds
-        , draftVolunteerIds = if hasNewCopy then [] else state.draftVolunteerIds
-        , participantError = if hasNewCopy then Nothing else state.participantError
+        , selectedVolunteerIds = if shouldClearParticipants then [] else state.selectedVolunteerIds
+        , draftVolunteerIds = if shouldClearParticipants then [] else state.draftVolunteerIds
+        , participantError = if shouldClearParticipants then Nothing else state.participantError
         , isSubmitting = input.isSubmitting
+        , isHoursPickerOpen = if hasSuccessfulSubmit then false else state.isHoursPickerOpen
         , yearDraft = show activeYear
         , copyVersion = input.copyVersion
+        , successfulSubmitVersion = input.successfulSubmitVersion
         }
   SelectActivity value -> case Int.fromString value of
     Nothing -> pure unit
@@ -533,6 +609,25 @@ handleAction = case _ of
     state <- H.get
     H.modify_ _ { dateText = value, dateError = validateDate state.defaultYear value }
   SetHours value -> H.modify_ _ { hoursText = value, hoursError = validateHours value }
+  OpenHoursPicker -> do
+    H.modify_
+      _
+        { isHoursPickerOpen = true
+        , isSeatPickerOpen = false
+        , isOtherStudentsOpen = false
+        }
+    inputElement <- H.getHTMLElementRef hoursInputRef
+    case inputElement of
+      Nothing -> pure unit
+      Just element -> H.liftEffect (HTMLElement.focus element)
+  CloseHoursPicker -> H.modify_ _ { isHoursPickerOpen = false }
+  SelectQuickHours value ->
+    H.modify_
+      _
+        { hoursText = value
+        , hoursError = Nothing
+        , isHoursPickerOpen = false
+        }
   SetNote note -> H.modify_ _ { note = note }
   BeginYearEdit -> H.modify_ \state -> state { isEditingYear = true, yearDraft = show state.defaultYear }
   SetYearDraft year -> H.modify_ _ { yearDraft = year }
@@ -552,7 +647,13 @@ handleAction = case _ of
   ToggleSeatPicker ->
     H.modify_ \state ->
       if state.isSeatPickerOpen then state { isSeatPickerOpen = false, isOtherStudentsOpen = false }
-      else state { isSeatPickerOpen = true, isOtherStudentsOpen = false, draftVolunteerIds = state.selectedVolunteerIds }
+      else
+        state
+          { isSeatPickerOpen = true
+          , isOtherStudentsOpen = false
+          , isHoursPickerOpen = false
+          , draftVolunteerIds = state.selectedVolunteerIds
+          }
   CloseSeatPicker -> H.modify_ _ { isSeatPickerOpen = false, isOtherStudentsOpen = false }
   SelectSeatPeriod value ->
     H.modify_ _ { selectedSeatPeriod = seatPeriodFromApi value, isOtherStudentsOpen = false }
@@ -581,6 +682,7 @@ handleAction = case _ of
   ConfirmVolunteers -> H.modify_ _ { isSeatPickerOpen = false, isOtherStudentsOpen = false }
   OpenNoteModal -> H.modify_ _ { isNoteModalOpen = true }
   CloseNoteModal -> H.modify_ _ { isNoteModalOpen = false }
+  SetClearParticipantsAfterSubmit value -> H.modify_ _ { clearParticipantsAfterSubmit = value }
   Submit -> do
     state <- H.get
     let dateError = validateDate state.defaultYear state.dateText

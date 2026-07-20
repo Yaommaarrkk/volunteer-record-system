@@ -46,6 +46,7 @@ type State =
   , isSubmitting :: Boolean
   , copiedRecord :: Maybe CopiedHourRecord
   , copyVersion :: Int
+  , successfulSubmitVersion :: Int
   , notice :: Maybe Notice
   , noticeVersion :: Int
   }
@@ -118,6 +119,7 @@ initialState =
   , isSubmitting: false
   , copiedRecord: Nothing
   , copyVersion: 0
+  , successfulSubmitVersion: 0
   , notice: Nothing
   , noticeVersion: 0
   }
@@ -157,6 +159,7 @@ render state =
         , isSubmitting: state.isSubmitting
         , copiedRecord: state.copiedRecord
         , copyVersion: state.copyVersion
+        , successfulSubmitVersion: state.successfulSubmitVersion
         }
         HourRecordFormOutput
     , HH.slot
@@ -224,7 +227,14 @@ handleAction = case _ of
         H.modify_ _ { isSubmitting = false }
         showNotice ErrorNotice message
       Right message -> do
-        H.modify_ _ { isSubmitting = false, isLoading = true, loadError = Nothing }
+        state <- H.get
+        H.modify_
+          _
+            { isSubmitting = false
+            , isLoading = true
+            , loadError = Nothing
+            , successfulSubmitVersion = state.successfulSubmitVersion + 1
+            }
         showNotice SuccessNotice message
         recordsResult <- H.liftAff loadHourRecords
         handleAction (RecordsLoaded recordsResult)
@@ -256,7 +266,7 @@ handleAction = case _ of
         { copiedRecord = Just copiedRecord
         , copyVersion = state.copyVersion + 1
         }
-    showNotice SuccessNotice "已複製到上方輸入區，請重新選擇學生"
+    showNotice SuccessNotice "已複製到上方輸入區"
   HourRecordListOutput HourRecordList.RetryRequested -> handleAction RetryLoad
   HideNotice version -> do
     state <- H.get
