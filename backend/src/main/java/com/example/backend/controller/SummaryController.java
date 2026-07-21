@@ -1,5 +1,6 @@
 package com.example.backend.controller;
 
+import com.example.backend.domain.DailyHourTotal;
 import com.example.backend.domain.VolunteerHourSummary;
 import com.example.backend.dto.response.Response;
 import com.example.backend.repository.SummaryRepository;
@@ -25,5 +26,10 @@ public class SummaryController {
     @GetMapping("/volunteer-hours")
     public ResponseEntity<Response<List<VolunteerHourSummary>>> getVolunteerHourSummaries() {
         return ResponseEntity.ok(ApiResponse.success(summaryRepository.getVolunteerHourSummaries()));
+    }
+
+    @GetMapping("/daily-hours")
+    public ResponseEntity<Response<List<DailyHourTotal>>> getDailyHourTotals() {
+        return ResponseEntity.ok(ApiResponse.success(summaryRepository.getDailyHourTotals()));
     }
 }

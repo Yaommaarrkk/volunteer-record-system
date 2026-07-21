@@ -819,6 +819,90 @@ body {
   color: #9aa8a4;
 }
 
+.summary-page-header {
+  align-items: end;
+}
+
+.summary-view-control {
+  display: grid;
+  min-width: 210px;
+  gap: 7px;
+  color: #365b54;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.summary-view-control select {
+  min-height: 42px;
+  padding: 8px 38px 8px 12px;
+  border: 1px solid #b9cec8;
+  border-radius: 10px;
+  background: #fff;
+  color: #17352f;
+  font: inherit;
+}
+
+.daily-chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  padding: 6px 0 2px;
+}
+
+.daily-chart-year {
+  margin: 2px 0 4px 62px;
+  color: #315f7e;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.daily-hour-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.daily-chart-grid-line {
+  stroke: #d9e5e1;
+  stroke-width: 1;
+}
+
+.daily-chart-grid-line-vertical {
+  stroke: #e8efed;
+}
+
+.daily-chart-axis-label,
+.daily-chart-date-label,
+.daily-chart-value-label {
+  fill: #667d76;
+  font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  font-size: 12px;
+}
+
+.daily-chart-value-label {
+  fill: #315f7e;
+  font-weight: 800;
+}
+
+.daily-chart-line {
+  fill: none;
+  stroke: #3b82f6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.daily-chart-point {
+  fill: #fff;
+  stroke: #2563eb;
+  stroke-width: 3;
+  transition: r 120ms ease-out, fill 120ms ease-out;
+}
+
+.daily-chart-point-group:hover .daily-chart-point {
+  r: 7px;
+  fill: #dbeafe;
+}
+
 .activity-drag-cell {
   width: 56px;
   text-align: center;
@@ -1755,6 +1839,10 @@ body {
   .master-data-header,
   .list-heading {
     display: grid;
+  }
+
+  .summary-view-control {
+    width: 100%;
   }
 
   .student-form-card,

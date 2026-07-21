@@ -100,7 +100,7 @@ renderContent state
                 [ HH.tr_
                     [ HH.th_ [ HH.text "姓名（年級）" ]
                     , explainedHeader "教學" "教學類型的時數，但不包含「品格教育」與「討論」。"
-                    , explainedHeader "品德教育" "活動名為「品格教育」或「討論」的時數總和。"
+                    , explainedHeader "品德教育" "活動名為「品格教育」、「討論」或「深聊」的時數總和。"
                     , explainedHeader "互動" "陪讀、玩樂、日常互動三種類型的時數總和。"
                     , explainedHeader "被動" "被動類型的時數，但不包含「旁聽訓話」。"
                     , HH.th_ [ HH.text "觀察" ]

@@ -1,5 +1,6 @@
 package com.example.backend.repository;
 
+import com.example.backend.domain.DailyHourTotal;
 import com.example.backend.domain.VolunteerHourSummary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -26,6 +27,12 @@ public class SummaryRepository {
                     resultSet.getBigDecimal("total_hours")
             );
 
+    private static final RowMapper<DailyHourTotal> DAILY_HOUR_TOTAL_ROW_MAPPER =
+            (resultSet, rowNumber) -> new DailyHourTotal(
+                    resultSet.getObject("activity_date", java.time.LocalDate.class),
+                    resultSet.getBigDecimal("total_hours")
+            );
+
     public SummaryRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
@@ -40,11 +47,11 @@ public class SummaryRepository {
                 volunteer_seat.seat_col,
                 COALESCE(SUM(CASE
                     WHEN hour_record.activity_type = 'TEACHING'
-                     AND activity.name NOT IN ('品格教育', '討論')
+                     AND activity.name NOT IN ('品格教育', '討論', '深聊')
                     THEN hour_record.hours ELSE 0
                 END), 0) AS teaching_hours,
                 COALESCE(SUM(CASE
-                    WHEN activity.name IN ('品格教育', '討論')
+                    WHEN activity.name IN ('品格教育', '討論', '深聊')
                     THEN hour_record.hours ELSE 0
                 END), 0) AS virtue_hours,
                 COALESCE(SUM(CASE
@@ -91,5 +98,18 @@ public class SummaryRepository {
             """;
 
         return jdbcTemplate.query(sql, VOLUNTEER_HOUR_SUMMARY_ROW_MAPPER);
+    }
+
+    public List<DailyHourTotal> getDailyHourTotals() {
+        String sql = """
+            SELECT
+                activity_date,
+                SUM(hours) AS total_hours
+            FROM hour_record
+            GROUP BY activity_date
+            ORDER BY activity_date
+            """;
+
+        return jdbcTemplate.query(sql, DAILY_HOUR_TOTAL_ROW_MAPPER);
     }
 }
