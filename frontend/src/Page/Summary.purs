@@ -4,6 +4,7 @@ import Prelude
 
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.Web as AX
+import Config.Api (apiUrl)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Domain.DailyHourTotal (DailyHourTotal)
@@ -212,7 +213,7 @@ loadDailyTotals = do
 
 requestVolunteerSummaries :: Aff (Either String (Array VolunteerHourSummary))
 requestVolunteerSummaries = do
-  result <- AX.get ResponseFormat.string "http://127.0.0.1:8080/api/summary/volunteer-hours"
+  result <- AX.get ResponseFormat.string (apiUrl "/api/summary/volunteer-hours")
   pure case result of
     Left error -> Left (AX.printError error)
     Right response -> case readJSON response.body of
@@ -223,7 +224,7 @@ requestVolunteerSummaries = do
 
 requestDailyTotals :: Aff (Either String (Array DailyHourTotal))
 requestDailyTotals = do
-  result <- AX.get ResponseFormat.string "http://127.0.0.1:8080/api/summary/daily-hours"
+  result <- AX.get ResponseFormat.string (apiUrl "/api/summary/daily-hours")
   pure case result of
     Left error -> Left (AX.printError error)
     Right response -> case readJSON response.body of

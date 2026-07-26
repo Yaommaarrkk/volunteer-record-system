@@ -5,6 +5,7 @@ import Prelude
 import Affjax.RequestBody as RequestBody
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.Web as AX
+import Config.Api (apiUrl)
 import Control.Parallel (parallel, sequential)
 import Data.Argonaut.Parser (jsonParser)
 import Data.Either (Either(..))
@@ -383,7 +384,7 @@ handleActivityUpdate request = do
 
 loadVolunteers :: Aff (Either String (Array Volunteer))
 loadVolunteers = do
-  result <- AX.get ResponseFormat.string "http://127.0.0.1:8080/api/volunteers"
+  result <- AX.get ResponseFormat.string (apiUrl "/api/volunteers")
   pure case result of
     Left error -> Left (AX.printError error)
     Right response -> case readJSON response.body of
@@ -392,7 +393,7 @@ loadVolunteers = do
 
 loadActivities :: Aff (Either String (Array Activity))
 loadActivities = do
-  result <- AX.get ResponseFormat.string "http://127.0.0.1:8080/api/activities"
+  result <- AX.get ResponseFormat.string (apiUrl "/api/activities")
   pure case result of
     Left error -> Left (AX.printError error)
     Right response -> case readJSON response.body of
@@ -406,7 +407,7 @@ createVolunteer volunteerRq = case jsonParser (writeJSON volunteerRq) of
     result <-
       AX.post
         ResponseFormat.string
-        "http://127.0.0.1:8080/api/volunteer"
+        (apiUrl "/api/volunteer")
         (Just (RequestBody.json json))
     pure case result of
       Left error -> Left (AX.printError error)
@@ -418,14 +419,14 @@ createVolunteer volunteerRq = case jsonParser (writeJSON volunteerRq) of
 
 createActivity :: ActivityForm.CreateActivityRequest -> Aff (Either String String)
 createActivity activityRequest =
-  postMutation "http://127.0.0.1:8080/api/activity" (writeJSON activityRequest) "新增活動"
+  postMutation (apiUrl "/api/activity") (writeJSON activityRequest) "新增活動"
 
 deleteVolunteer :: Int -> Aff (Either String String)
 deleteVolunteer id = do
   result <-
     AX.delete
       ResponseFormat.string
-      ("http://127.0.0.1:8080/api/volunteer/" <> show id)
+      (apiUrl ("/api/volunteer/" <> show id))
   pure case result of
     Left error -> Left (AX.printError error)
     Right response -> case readJSON response.body of
@@ -439,19 +440,19 @@ deleteActivity id = do
   result <-
     AX.delete
       ResponseFormat.string
-      ("http://127.0.0.1:8080/api/activity/" <> show id)
+      (apiUrl ("/api/activity/" <> show id))
   pure (decodeMutationResponse "刪除活動" result)
 
 updateVolunteerName :: Int -> String -> Aff (Either String String)
 updateVolunteerName id name =
   patchVolunteer
-    ("http://127.0.0.1:8080/api/volunteer/" <> show id <> "/name")
+    (apiUrl ("/api/volunteer/" <> show id <> "/name"))
     (writeJSON { name })
 
 updateVolunteerAge :: Int -> Int -> Aff (Either String String)
 updateVolunteerAge id age =
   patchVolunteer
-    ("http://127.0.0.1:8080/api/volunteer/" <> show id <> "/age")
+    (apiUrl ("/api/volunteer/" <> show id <> "/age"))
     (writeJSON { age })
 
 updateVolunteerSeat :: Int -> SeatPeriod -> Maybe Seat -> Aff (Either String String)
@@ -462,38 +463,40 @@ updateVolunteerSeat id period seat =
       Just selectedSeat -> { row: Just selectedSeat.row, col: Just selectedSeat.col }
   in
     patchVolunteer
-      ( "http://127.0.0.1:8080/api/volunteer/"
+      ( apiUrl
+          ( "/api/volunteer/"
           <> show id
           <> "/seat/"
           <> seatPeriodToApi period
+          )
       )
       (writeJSON request)
 
 updateActivityName :: Int -> String -> Aff (Either String String)
 updateActivityName id name =
   patchMutation
-    ("http://127.0.0.1:8080/api/activity/" <> show id <> "/name")
+    (apiUrl ("/api/activity/" <> show id <> "/name"))
     (writeJSON { name })
     "修改活動名"
 
 updateActivityType :: Int -> String -> Aff (Either String String)
 updateActivityType id defaultType =
   patchMutation
-    ("http://127.0.0.1:8080/api/activity/" <> show id <> "/default-type")
+    (apiUrl ("/api/activity/" <> show id <> "/default-type"))
     (writeJSON { defaultType })
     "修改活動類型"
 
 updateActivityOrder :: String -> Array Int -> Aff (Either String String)
 updateActivityOrder defaultType activityIds =
   putMutation
-    "http://127.0.0.1:8080/api/activities/order"
+    (apiUrl "/api/activities/order")
     (writeJSON { defaultType, activityIds })
     "修改活動排序"
 
 updateActivityColor :: String -> String -> Aff (Either String String)
 updateActivityColor defaultType tagColor =
   patchMutation
-    ("http://127.0.0.1:8080/api/activity-types/" <> defaultType <> "/color")
+    (apiUrl ("/api/activity-types/" <> defaultType <> "/color"))
     (writeJSON { tagColor })
     "修改活動類型顏色"
 

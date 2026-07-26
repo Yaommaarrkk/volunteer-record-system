@@ -5,6 +5,7 @@ import Prelude
 import Affjax.RequestBody as RequestBody
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.Web as AX
+import Config.Api (apiUrl)
 import Control.Parallel (parallel, sequential)
 import Data.Argonaut.Parser (jsonParser)
 import Data.Either (Either(..))
@@ -308,7 +309,7 @@ loadPageData = do
 
 loadActivities :: Aff (Either String (Array Activity))
 loadActivities = do
-  result <- AX.get ResponseFormat.string "http://127.0.0.1:8080/api/activities"
+  result <- AX.get ResponseFormat.string (apiUrl "/api/activities")
   pure case result of
     Left error -> Left (AX.printError error)
     Right response -> case readJSON response.body of
@@ -317,7 +318,7 @@ loadActivities = do
 
 loadVolunteers :: Aff (Either String (Array Volunteer))
 loadVolunteers = do
-  result <- AX.get ResponseFormat.string "http://127.0.0.1:8080/api/volunteers"
+  result <- AX.get ResponseFormat.string (apiUrl "/api/volunteers")
   pure case result of
     Left error -> Left (AX.printError error)
     Right response -> case readJSON response.body of
@@ -326,7 +327,7 @@ loadVolunteers = do
 
 loadDefaultYear :: Aff (Either String Int)
 loadDefaultYear = do
-  result <- AX.get ResponseFormat.string "http://127.0.0.1:8080/api/record-settings/default-year"
+  result <- AX.get ResponseFormat.string (apiUrl "/api/record-settings/default-year")
   pure case result of
     Left error -> Left (AX.printError error)
     Right response -> case readJSON response.body of
@@ -335,7 +336,7 @@ loadDefaultYear = do
 
 loadHourRecords :: Aff (Either String (Array HourRecord))
 loadHourRecords = do
-  result <- AX.get ResponseFormat.string "http://127.0.0.1:8080/api/hour-records"
+  result <- AX.get ResponseFormat.string (apiUrl "/api/hour-records")
   pure case result of
     Left error -> Left (AX.printError error)
     Right response -> case readJSON response.body of
@@ -344,19 +345,19 @@ loadHourRecords = do
 
 createHourRecord :: HourRecordForm.CreateHourRecordRequest -> Aff (Either String String)
 createHourRecord request =
-  postMutation "http://127.0.0.1:8080/api/hour-record" (writeJSON request) "新增時數紀錄"
+  postMutation (apiUrl "/api/hour-record") (writeJSON request) "新增時數紀錄"
 
 updateDefaultYear :: Int -> Aff (Either String String)
 updateDefaultYear year =
   patchMutation
-    "http://127.0.0.1:8080/api/record-settings/default-year"
+    (apiUrl "/api/record-settings/default-year")
     (writeJSON { year })
     "修改預設年份"
 
 deleteHourRecords :: Array Int -> Aff (Either String String)
 deleteHourRecords ids =
   postMutation
-    "http://127.0.0.1:8080/api/hour-records/delete"
+    (apiUrl "/api/hour-records/delete")
     (writeJSON { ids })
     "刪除時數紀錄"
 
