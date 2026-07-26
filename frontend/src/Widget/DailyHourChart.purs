@@ -8,7 +8,7 @@ module Widget.DailyHourChart
 import Prelude
 
 import Data.Array as Array
-import Data.Foldable (foldMap)
+import Data.Foldable (foldMap, foldl)
 import Data.Int as Int
 import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits as CodeUnits
@@ -102,7 +102,13 @@ renderChart totals =
     right = 30.0
     top = 38.0
     bottom = 66.0
-    points = Array.mapWithIndex (makePoint count width height left right top bottom) totals
+    maximumValue = foldl (\current total -> max current total.totalHours) 0.0 totals
+    axisStep = max 1 (Int.ceil (maximumValue / 5.0))
+    axisMaximum = Int.toNumber (axisStep * 5)
+    points =
+      Array.mapWithIndex
+        (makePoint count width height left right top bottom axisMaximum)
+        totals
   in
   HH.div
     [ HP.class_ (HH.ClassName "daily-chart-area") ]
@@ -119,9 +125,9 @@ renderChart totals =
             , HP.attr (HH.AttrName "class") "daily-hour-chart"
             ]
             ( [ svgElement "title" [] [ HH.text "每日學生總時數" ]
-              , svgElement "desc" [] [ HH.text "橫軸為日期，縱軸固定為零到十小時。" ]
+              , svgElement "desc" [] [ HH.text "橫軸為日期，縱軸依最高時數自動調整。" ]
               ]
-                <> renderGrid width height left right top bottom points
+                <> renderGrid width height left right top bottom axisStep axisMaximum points
                 <> [ svgElement "path"
                       [ HP.attr (HH.AttrName "d") (straightPath points)
                       , HP.attr (HH.AttrName "class") "daily-chart-line"
@@ -146,17 +152,18 @@ makePoint
   -> Number
   -> Number
   -> Number
+  -> Number
   -> Int
   -> DailyHourTotal
   -> Point
-makePoint count width height left right top bottom index total =
+makePoint count width height left right top bottom axisMaximum index total =
   let
     plotWidth = width - left - right
     plotHeight = height - top - bottom
     x =
       if count <= 1 then left + plotWidth / 2.0
       else left + Int.toNumber index / Int.toNumber (count - 1) * plotWidth
-    y = top + (1.0 - min 10.0 total.totalHours / 10.0) * plotHeight
+    y = top + (1.0 - total.totalHours / axisMaximum) * plotHeight
   in
   { x, y, value: total.totalHours, date: total.activityDate }
 
@@ -168,14 +175,16 @@ renderGrid
   -> Number
   -> Number
   -> Number
+  -> Int
+  -> Number
   -> Array Point
   -> Array (H.ComponentHTML Action Slots m)
-renderGrid width height left right top bottom points =
+renderGrid width height left right top bottom axisStep axisMaximum points =
   let
     plotHeight = height - top - bottom
-    levels = [ 0, 2, 4, 6, 8, 10 ]
+    levels = map (_ * axisStep) [ 0, 1, 2, 3, 4, 5 ]
   in
-  (levels >>= renderHorizontalGrid width left right top plotHeight)
+  (levels >>= renderHorizontalGrid width left right top plotHeight axisMaximum)
     <> map (renderVerticalGrid top (height - bottom)) points
 
 renderHorizontalGrid
@@ -185,10 +194,11 @@ renderHorizontalGrid
   -> Number
   -> Number
   -> Number
+  -> Number
   -> Int
   -> Array (H.ComponentHTML Action Slots m)
-renderHorizontalGrid width left right top plotHeight value =
-  let y = top + (1.0 - Int.toNumber value / 10.0) * plotHeight
+renderHorizontalGrid width left right top plotHeight axisMaximum value =
+  let y = top + (1.0 - Int.toNumber value / axisMaximum) * plotHeight
   in
   [ svgElement "line"
       [ HP.attr (HH.AttrName "x1") (show left)

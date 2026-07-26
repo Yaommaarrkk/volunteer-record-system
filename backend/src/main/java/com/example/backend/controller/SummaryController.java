@@ -2,12 +2,15 @@ package com.example.backend.controller;
 
 import com.example.backend.domain.DailyHourTotal;
 import com.example.backend.domain.VolunteerHourSummary;
+import com.example.backend.dto.response.ActivityRankingResponse;
 import com.example.backend.dto.response.Response;
+import com.example.backend.dto.response.VolunteerHourDetailResponse;
 import com.example.backend.repository.SummaryRepository;
 import com.example.backend.util.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,8 +35,20 @@ public class SummaryController {
         return ResponseEntity.ok(ApiResponse.success(summaryRepository.getVolunteerHourSummaries()));
     }
 
+    @GetMapping("/volunteer-hours/{volunteerId}")
+    public ResponseEntity<Response<VolunteerHourDetailResponse>> getVolunteerHourDetail(
+            @PathVariable Integer volunteerId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(summaryRepository.getVolunteerHourDetail(volunteerId)));
+    }
+
     @GetMapping("/daily-hours")
     public ResponseEntity<Response<List<DailyHourTotal>>> getDailyHourTotals() {
         return ResponseEntity.ok(ApiResponse.success(summaryRepository.getDailyHourTotals()));
+    }
+
+    @GetMapping("/activity-rankings")
+    public ResponseEntity<Response<List<ActivityRankingResponse>>> getActivityRankings() {
+        return ResponseEntity.ok(ApiResponse.success(summaryRepository.getActivityRankings()));
     }
 }

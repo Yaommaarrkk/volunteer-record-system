@@ -7,6 +7,7 @@ import Affjax.Web as AX
 import Config.Api (apiUrl)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
+import Domain.ActivityRanking (ActivityRanking)
 import Domain.DailyHourTotal (DailyHourTotal)
 import Domain.VolunteerHourSummary (VolunteerHourSummary)
 import Effect.Aff (Aff)
@@ -17,6 +18,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Simple.JSON (readJSON)
 import Type.Proxy (Proxy(..))
+import Widget.ActivityRanking as ActivityRanking
 import Widget.DailyHourChart as DailyHourChart
 import Widget.VolunteerHourSummary as VolunteerHourSummary
 
@@ -26,9 +28,12 @@ _volunteerHourSummary = Proxy :: Proxy "volunteerHourSummarySlot"
 
 _dailyHourChart = Proxy :: Proxy "dailyHourChartSlot"
 
+_activityRanking = Proxy :: Proxy "activityRankingSlot"
+
 type Slots =
   ( volunteerHourSummarySlot :: VolunteerHourSummary.Slot Unit
   , dailyHourChartSlot :: DailyHourChart.Slot Unit
+  , activityRankingSlot :: ActivityRanking.Slot Unit
   )
 
 type Input = Unit
@@ -36,6 +41,7 @@ type Input = Unit
 data SummaryView
   = StudentComparison
   | DailyTotal
+  | ActivityRankingView
 
 type State =
   { selectedView :: SummaryView
@@ -45,6 +51,9 @@ type State =
   , dailyTotals :: Array DailyHourTotal
   , areDailyTotalsLoading :: Boolean
   , dailyTotalsError :: Maybe String
+  , activityRankings :: Array ActivityRanking
+  , areActivityRankingsLoading :: Boolean
+  , activityRankingsError :: Maybe String
   }
 
 type VolunteerSummaryResponse =
@@ -59,13 +68,21 @@ type DailyTotalsResponse =
   , data :: Array DailyHourTotal
   }
 
+type ActivityRankingsResponse =
+  { success :: Boolean
+  , message :: String
+  , data :: Array ActivityRanking
+  }
+
 data Action
   = Initialize
   | SelectView String
   | VolunteerSummariesLoaded (Either String (Array VolunteerHourSummary))
   | DailyTotalsLoaded (Either String (Array DailyHourTotal))
+  | ActivityRankingsLoaded (Either String (Array ActivityRanking))
   | VolunteerSummaryOutput VolunteerHourSummary.Output
   | DailyHourChartOutput DailyHourChart.Output
+  | ActivityRankingOutput ActivityRanking.Output
 
 data Output = OutputUnit
 
@@ -78,6 +95,9 @@ initialState =
   , dailyTotals: []
   , areDailyTotalsLoading: true
   , dailyTotalsError: Nothing
+  , activityRankings: []
+  , areActivityRankingsLoading: true
+  , activityRankingsError: Nothing
   }
 
 component :: forall query m. MonadAff m => H.Component query Input Output m
@@ -112,6 +132,7 @@ render state =
                 ]
                 [ HH.option [ HP.value "student-comparison" ] [ HH.text "學生時數比較" ]
                 , HH.option [ HP.value "daily-total" ] [ HH.text "每日總時數" ]
+                , HH.option [ HP.value "activity-ranking" ] [ HH.text "活動時數排行" ]
                 ]
             ]
         ]
@@ -136,12 +157,23 @@ render state =
             , loadError: state.dailyTotalsError
             }
             DailyHourChartOutput
+        ActivityRankingView ->
+          HH.slot
+            _activityRanking
+            unit
+            ActivityRanking.component
+            { rankings: state.activityRankings
+            , isLoading: state.areActivityRankingsLoading
+            , loadError: state.activityRankingsError
+            }
+            ActivityRankingOutput
     ]
 
 summaryViewValue :: SummaryView -> String
 summaryViewValue = case _ of
   StudentComparison -> "student-comparison"
   DailyTotal -> "daily-total"
+  ActivityRankingView -> "activity-ranking"
 
 handleAction
   :: forall m
@@ -152,10 +184,19 @@ handleAction = case _ of
   Initialize -> do
     loadVolunteerSummaries
     loadDailyTotals
+    loadActivityRankings
   SelectView value ->
-    H.modify_ _ { selectedView = if value == "daily-total" then DailyTotal else StudentComparison }
+    H.modify_
+      _
+        { selectedView =
+            case value of
+              "daily-total" -> DailyTotal
+              "activity-ranking" -> ActivityRankingView
+              _ -> StudentComparison
+        }
   VolunteerSummaryOutput VolunteerHourSummary.RetryRequested -> loadVolunteerSummaries
   DailyHourChartOutput DailyHourChart.RetryRequested -> loadDailyTotals
+  ActivityRankingOutput ActivityRanking.RetryRequested -> loadActivityRankings
   VolunteerSummariesLoaded result -> case result of
     Left message ->
       H.modify_
@@ -184,6 +225,20 @@ handleAction = case _ of
           , areDailyTotalsLoading = false
           , dailyTotalsError = Nothing
           }
+  ActivityRankingsLoaded result -> case result of
+    Left message ->
+      H.modify_
+        _
+          { areActivityRankingsLoading = false
+          , activityRankingsError = Just message
+          }
+    Right rankings ->
+      H.modify_
+        _
+          { activityRankings = rankings
+          , areActivityRankingsLoading = false
+          , activityRankingsError = Nothing
+          }
 
 loadVolunteerSummaries
   :: forall m
@@ -211,6 +266,19 @@ loadDailyTotals = do
   result <- H.liftAff requestDailyTotals
   handleAction (DailyTotalsLoaded result)
 
+loadActivityRankings
+  :: forall m
+   . MonadAff m
+  => H.HalogenM State Action Slots Output m Unit
+loadActivityRankings = do
+  H.modify_
+    _
+      { areActivityRankingsLoading = true
+      , activityRankingsError = Nothing
+      }
+  result <- H.liftAff requestActivityRankings
+  handleAction (ActivityRankingsLoaded result)
+
 requestVolunteerSummaries :: Aff (Either String (Array VolunteerHourSummary))
 requestVolunteerSummaries = do
   result <- AX.get ResponseFormat.string (apiUrl "/api/summary/volunteer-hours")
@@ -230,5 +298,16 @@ requestDailyTotals = do
     Right response -> case readJSON response.body of
       Left errors -> Left ("每日時數資料格式錯誤：" <> show errors)
       Right (decoded :: DailyTotalsResponse) ->
+        if decoded.success then Right decoded.data
+        else Left decoded.message
+
+requestActivityRankings :: Aff (Either String (Array ActivityRanking))
+requestActivityRankings = do
+  result <- AX.get ResponseFormat.string (apiUrl "/api/summary/activity-rankings")
+  pure case result of
+    Left error -> Left (AX.printError error)
+    Right response -> case readJSON response.body of
+      Left errors -> Left ("活動排行資料格式錯誤：" <> show errors)
+      Right (decoded :: ActivityRankingsResponse) ->
         if decoded.success then Right decoded.data
         else Left decoded.message
