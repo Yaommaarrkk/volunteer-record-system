@@ -81,6 +81,8 @@ body {
   z-index: 100;
   top: 16px;
   left: 16px;
+  width: min(360px, calc(100vw - 32px));
+  min-height: 46px;
 }
 
 .quick-navigation-trigger {
@@ -110,7 +112,7 @@ body {
   position: absolute;
   top: 54px;
   left: 0;
-  width: min(360px, calc(100vw - 32px));
+  width: 100%;
   padding: 14px;
   border: 1px solid #d1dfda;
   border-radius: 16px;
@@ -1816,10 +1818,11 @@ body {
   .quick-navigation {
     top: 10px;
     left: 10px;
+    width: calc(100vw - 20px);
   }
 
   .quick-navigation-panel {
-    width: calc(100vw - 20px);
+    width: 100%;
   }
 
   .quick-navigation-panel .home-menu {
