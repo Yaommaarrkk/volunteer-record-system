@@ -22,7 +22,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = {"http://127.0.0.1:3000", "http://localhost:3000"})
+@CrossOrigin(origins = {
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+        "https://volunteer-record-system-frontend.onrender.com"
+})
 public class HourRecordController {
     private final HourRecordRepository hourRecordRepository;
     private final RecordSettingRepository recordSettingRepository;
