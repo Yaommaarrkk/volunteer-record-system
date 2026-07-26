@@ -1731,7 +1731,7 @@ body {
 
 .hour-record-table tbody tr {
   cursor: default;
-  user-select: none;
+  user-select: text;
 }
 
 .hour-record-table tbody tr.hour-record-row-selected,
