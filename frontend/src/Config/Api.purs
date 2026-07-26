@@ -4,8 +4,7 @@ module Config.Api
 
 import Prelude
 
-apiBaseUrl :: String
-apiBaseUrl = "http://127.0.0.1:8080"
+foreign import apiBaseUrl :: String
 
 apiUrl :: String -> String
 apiUrl path = apiBaseUrl <> path
