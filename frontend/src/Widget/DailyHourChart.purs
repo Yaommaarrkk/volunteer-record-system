@@ -31,10 +31,17 @@ type Input =
   , loadError :: Maybe String
   }
 
-type State = Input
+type State =
+  { totals :: Array DailyHourTotal
+  , isLoading :: Boolean
+  , loadError :: Maybe String
+  , openedDescription :: Maybe String
+  }
 
 data Action
   = Receive Input
+  | OpenDescription String
+  | CloseDescription
   | Retry
 
 data Output
@@ -45,12 +52,18 @@ type Point =
   , y :: Number
   , value :: Number
   , date :: String
+  , description :: Maybe String
   }
 
 component :: forall query m. Monad m => H.Component query Input Output m
 component =
   H.mkComponent
-    { initialState: identity
+    { initialState: \input ->
+        { totals: input.totals
+        , isLoading: input.isLoading
+        , loadError: input.loadError
+        , openedDescription: Nothing
+        }
     , render
     , eval:
         H.mkEval
@@ -64,7 +77,8 @@ render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.section
     [ HP.class_ (HH.ClassName "summary-card daily-hour-card") ]
-    [ HH.div
+    [ renderDescriptionDialog state.openedDescription
+    , HH.div
         [ HP.class_ (HH.ClassName "list-heading") ]
         [ HH.div_
             [ HH.h2_ [ HH.text "每日總時數" ]
@@ -97,11 +111,11 @@ renderChart totals =
   let
     count = Array.length totals
     width = max 720.0 (110.0 + Int.toNumber (max 0 (count - 1)) * 90.0)
-    height = 390.0
+    height = 430.0
     left = 62.0
     right = 30.0
     top = 38.0
-    bottom = 66.0
+    bottom = 106.0
     maximumValue = foldl (\current total -> max current total.totalHours) 0.0 totals
     axisStep = max 1 (Int.ceil (maximumValue / 5.0))
     axisMaximum = Int.toNumber (axisStep * 5)
@@ -165,7 +179,12 @@ makePoint count width height left right top bottom axisMaximum index total =
       else left + Int.toNumber index / Int.toNumber (count - 1) * plotWidth
     y = top + (1.0 - total.totalHours / axisMaximum) * plotHeight
   in
-  { x, y, value: total.totalHours, date: total.activityDate }
+  { x
+  , y
+  , value: total.totalHours
+  , date: total.activityDate
+  , description: total.dailyActivityDescription
+  }
 
 renderGrid
   :: forall m
@@ -248,7 +267,7 @@ renderPoint :: forall m. Point -> H.ComponentHTML Action Slots m
 renderPoint point =
   svgElement "g"
     [ HP.attr (HH.AttrName "class") "daily-chart-point-group" ]
-    [ svgElement "circle"
+    ( [ svgElement "circle"
         [ HP.attr (HH.AttrName "cx") (show point.x)
         , HP.attr (HH.AttrName "cy") (show point.y)
         , HP.attr (HH.AttrName "r") "5"
@@ -272,7 +291,90 @@ renderPoint point =
         , HP.attr (HH.AttrName "class") "daily-chart-date-label"
         ]
         [ HH.text (shortDate point.date) ]
-    ]
+      ]
+      <> renderActivityDescription point
+    )
+
+renderActivityDescription
+  :: forall m
+   . Point
+  -> Array (H.ComponentHTML Action Slots m)
+renderActivityDescription point = case point.description of
+  Nothing -> []
+  Just description ->
+    let
+      length = CodeUnits.length description
+      content =
+        if length <= 3 then
+          [ xhtmlElement "span"
+              [ HP.class_ (HH.ClassName "daily-chart-activity-note-single") ]
+              [ HH.text description ]
+          ]
+        else if length <= 8 then
+          let
+            firstLineLength = div (length + 1) 2
+          in
+            [ xhtmlElement "span"
+                [ HP.class_ (HH.ClassName "daily-chart-activity-note-lines") ]
+                [ xhtmlElement "span" []
+                    [ HH.text (CodeUnits.take firstLineLength description) ]
+                , xhtmlElement "span" []
+                    [ HH.text (CodeUnits.drop firstLineLength description) ]
+                ]
+            ]
+        else
+          [ xhtmlElement "span"
+              [ HP.class_ (HH.ClassName "daily-chart-activity-note-preview") ]
+              [ xhtmlElement "span" []
+                  [ HH.text (CodeUnits.take 4 description) ]
+              , xhtmlElement "span"
+                  [ HP.class_ (HH.ClassName "daily-chart-activity-note-preview-more") ]
+                  [ xhtmlElement "span" []
+                      [ HH.text (CodeUnits.take 2 (CodeUnits.drop 4 description)) ]
+                  , xhtmlElement "button"
+                      [ HP.class_ (HH.ClassName "daily-chart-note-more")
+                      , HP.attr (HH.AttrName "type") "button"
+                      , HP.attr (HH.AttrName "aria-label") "查看完整當日活動"
+                      , HE.onClick \_ -> OpenDescription description
+                      ]
+                      [ HH.text "..." ]
+                  ]
+              ]
+          ]
+    in
+      [ svgElement "foreignObject"
+          [ HP.attr (HH.AttrName "x") (show (point.x - 45.0))
+          , HP.attr (HH.AttrName "y") "360"
+          , HP.attr (HH.AttrName "width") "90"
+          , HP.attr (HH.AttrName "height") "44"
+          , HP.attr (HH.AttrName "class") "daily-chart-activity-note-object"
+          ]
+          [ xhtmlElement "div"
+              [ HP.class_ (HH.ClassName "daily-chart-activity-note-box") ]
+              content
+          ]
+      ]
+
+renderDescriptionDialog
+  :: forall m
+   . Maybe String
+  -> H.ComponentHTML Action Slots m
+renderDescriptionDialog = case _ of
+  Nothing -> HH.text ""
+  Just description ->
+    HH.div
+      [ HP.class_ (HH.ClassName "daily-chart-note-overlay")
+      , HP.attr (HH.AttrName "role") "dialog"
+      , HP.attr (HH.AttrName "aria-modal") "true"
+      , HE.onClick \_ -> CloseDescription
+      ]
+      [ HH.div
+          [ HP.class_ (HH.ClassName "daily-chart-note-dialog") ]
+          [ HH.h3_ [ HH.text "當日活動" ]
+          , HH.p_ [ HH.text description ]
+          , HH.span_ [ HH.text "點任意位置返回" ]
+          ]
+      ]
 
 yearLabel :: Array DailyHourTotal -> String
 yearLabel totals =
@@ -297,11 +399,32 @@ svgElement name =
     (HH.Namespace "http://www.w3.org/2000/svg")
     (HH.ElemName name)
 
+xhtmlElement
+  :: forall r m
+   . String
+  -> Array (HP.IProp r Action)
+  -> Array (H.ComponentHTML Action Slots m)
+  -> H.ComponentHTML Action Slots m
+xhtmlElement name =
+  HH.elementNS
+    (HH.Namespace "http://www.w3.org/1999/xhtml")
+    (HH.ElemName name)
+
 handleAction
   :: forall m
    . Monad m
   => Action
   -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
-  Receive input -> H.put input
+  Receive input ->
+    H.modify_
+      _
+        { totals = input.totals
+        , isLoading = input.isLoading
+        , loadError = input.loadError
+        }
+  OpenDescription description ->
+    H.modify_ _ { openedDescription = Just description }
+  CloseDescription ->
+    H.modify_ _ { openedDescription = Nothing }
   Retry -> H.raise RetryRequested

@@ -36,7 +36,8 @@ public class SummaryRepository {
     private static final RowMapper<DailyHourTotal> DAILY_HOUR_TOTAL_ROW_MAPPER =
             (resultSet, rowNumber) -> new DailyHourTotal(
                     resultSet.getObject("activity_date", java.time.LocalDate.class),
-                    resultSet.getBigDecimal("total_hours")
+                    resultSet.getBigDecimal("total_hours"),
+                    resultSet.getString("daily_activity_description")
             );
 
     public SummaryRepository(JdbcTemplate jdbcTemplate) {
@@ -109,11 +110,16 @@ public class SummaryRepository {
     public List<DailyHourTotal> getDailyHourTotals() {
         String sql = """
             SELECT
-                activity_date,
-                SUM(hours) AS total_hours
+                hour_record.activity_date,
+                SUM(hour_record.hours) AS total_hours,
+                daily_activity.description AS daily_activity_description
             FROM hour_record
-            GROUP BY activity_date
-            ORDER BY activity_date
+            LEFT JOIN daily_activity
+              ON daily_activity.activity_date = hour_record.activity_date
+            GROUP BY
+                hour_record.activity_date,
+                daily_activity.description
+            ORDER BY hour_record.activity_date
             """;
 
         return jdbcTemplate.query(sql, DAILY_HOUR_TOTAL_ROW_MAPPER);

@@ -1496,6 +1496,111 @@ body:has(.daily-activity-page) {
   fill: #dbeafe;
 }
 
+.daily-chart-activity-note-object {
+  overflow: visible;
+}
+
+.daily-chart-activity-note-box {
+  width: 100%;
+  min-height: 40px;
+  display: grid;
+  place-items: start center;
+  color: #9a4038;
+  font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
+}
+
+.daily-chart-activity-note-single {
+  display: block;
+}
+
+.daily-chart-activity-note-lines {
+  display: grid;
+  justify-items: center;
+}
+
+.daily-chart-activity-note-preview {
+  display: inline-grid;
+  justify-items: center;
+}
+
+.daily-chart-activity-note-preview-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.daily-chart-note-more {
+  min-width: 18px;
+  height: 14px;
+  display: inline-grid;
+  place-items: center;
+  margin: 0;
+  padding: 0 2px;
+  border: 1px solid #c13f35;
+  border-radius: 4px;
+  background: #fff8f7;
+  color: #7f211b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.daily-chart-note-more:hover,
+.daily-chart-note-more:focus-visible {
+  outline: none;
+  background: #c13f35;
+  color: #fff;
+}
+
+.daily-chart-note-overlay {
+  position: fixed;
+  z-index: 250;
+  inset: 0;
+  display: grid;
+  padding: 20px;
+  place-items: center;
+  background: rgba(31, 43, 40, 0.48);
+  cursor: pointer;
+}
+
+.daily-chart-note-dialog {
+  width: min(420px, calc(100vw - 40px));
+  padding: 24px;
+  border: 1px solid #e0b8b3;
+  border-radius: 16px;
+  background: #fff8f7;
+  box-shadow: 0 22px 60px rgba(72, 30, 26, 0.28);
+  color: #542824;
+  text-align: center;
+}
+
+.daily-chart-note-dialog h3 {
+  margin: 0 0 12px;
+  color: #9a4038;
+}
+
+.daily-chart-note-dialog p {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.daily-chart-note-dialog span {
+  display: block;
+  margin-top: 18px;
+  color: #9a7773;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .activity-drag-cell {
   width: 56px;
   text-align: center;
