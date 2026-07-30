@@ -24,6 +24,7 @@ data Route
   | MasterData MasterDataType
   | Records
   | Summary
+  | DailyActivity
   | NotFound String
 
 derive instance genericRoute :: Generic Route _
@@ -59,6 +60,7 @@ routeCodec =
         , "MasterData": "master-data" / masterDataTypeCodec
         , "Records": "records" / G.noArgs
         , "Summary": "summary" / G.noArgs
+        , "DailyActivity": "daily-activity" / G.noArgs
         , "NotFound": "not-found" / segment
         }
 

@@ -12,6 +12,7 @@ import Halogen.HTML as HH
 import Halogen.Subscription as HS
 import Halogen.VDom.Driver (runUI)
 import Page.Home as HomePage
+import Page.DailyActivity as DailyActivityPage
 import Page.MasterData as MasterDataPage
 import Page.Records as RecordsPage
 import Page.Summary as SummaryPage
@@ -27,6 +28,8 @@ _records = Proxy :: Proxy "recordsSlot"
 
 _summary = Proxy :: Proxy "summarySlot"
 
+_dailyActivity = Proxy :: Proxy "dailyActivitySlot"
+
 _quickNavigation = Proxy :: Proxy "quickNavigationSlot"
 
 type Slots
@@ -34,6 +37,7 @@ type Slots
     , masterDataSlot :: MasterDataPage.Slot Unit
     , recordsSlot :: RecordsPage.Slot Unit
     , summarySlot :: SummaryPage.Slot Unit
+    , dailyActivitySlot :: DailyActivityPage.Slot Unit
     , quickNavigationSlot :: QuickNavigation.Slot Unit
     )
 
@@ -75,6 +79,7 @@ render state =
         MasterData masterDataType -> HH.slot_ _masterData unit MasterDataPage.component masterDataType
         Records -> HH.slot_ _records unit RecordsPage.component unit
         Summary -> HH.slot_ _summary unit SummaryPage.component unit
+        DailyActivity -> HH.slot_ _dailyActivity unit DailyActivityPage.component unit
         NotFound str -> HH.div_ [ HH.text ("404 Not Found: " <> str) ]
     ]
 

@@ -1,5 +1,7 @@
 module Widget.HomeMenu where
 
+import Prelude ((<>))
+
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 
@@ -19,11 +21,13 @@ view size =
         , menuButton size "#/master-data/activities" "修改活動資料" "修改活" "動資料"
         ]
     , HH.div
-        [ HP.class_ (HH.ClassName "home-block") ]
-        [ menuButton size "#/records" "輸入時數條" "輸入" "時數條" ]
+        [ HP.class_ (HH.ClassName "home-block home-block-stacked") ]
+        [ menuButton size "#/records" "輸入時數條" "輸入" "時數條"
+        , menuButton size "#/summary" "查看資料庫" "查看" "資料庫"
+        ]
     , HH.div
         [ HP.class_ (HH.ClassName "home-block") ]
-        [ menuButton size "#/summary" "查看資料庫" "查看" "資料庫" ]
+        [ dailyActivityButton size ]
     ]
 
 menuClass :: MenuSize -> String
@@ -40,8 +44,33 @@ menuButton
   -> String
   -> HH.ComponentHTML action slots m
 menuButton size target fullLabel firstLine secondLine =
+  styledMenuButton size "" target fullLabel firstLine secondLine
+
+dailyActivityButton
+  :: forall action slots m
+   . MenuSize
+  -> HH.ComponentHTML action slots m
+dailyActivityButton size =
+  styledMenuButton
+    size
+    " home-button-daily-activity"
+    "#/daily-activity"
+    "添加當日活動"
+    "添加當"
+    "日活動"
+
+styledMenuButton
+  :: forall action slots m
+   . MenuSize
+  -> String
+  -> String
+  -> String
+  -> String
+  -> String
+  -> HH.ComponentHTML action slots m
+styledMenuButton size extraClass target fullLabel firstLine secondLine =
   HH.a
-    [ HP.class_ (HH.ClassName "home-button")
+    [ HP.class_ (HH.ClassName ("home-button" <> extraClass))
     , HP.href target
     ]
     (buttonLabel size fullLabel firstLine secondLine)

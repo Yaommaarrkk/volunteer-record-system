@@ -32,7 +32,11 @@ public class DatabaseBackupRepository {
                         "record_setting",
                         "SELECT * FROM record_setting ORDER BY setting_id"
                 ),
-                queryTable("hour_record", "SELECT * FROM hour_record ORDER BY id")
+                queryTable("hour_record", "SELECT * FROM hour_record ORDER BY id"),
+                queryTable(
+                        "daily_activity",
+                        "SELECT * FROM daily_activity ORDER BY activity_date"
+                )
         );
     }
 

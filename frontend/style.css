@@ -76,6 +76,19 @@ body {
   outline-offset: 3px;
 }
 
+.home-button-daily-activity {
+  border-color: #bd4b42;
+  background: #fff8f7;
+  box-shadow: 0 12px 28px rgba(132, 47, 41, 0.12);
+  color: #a23932;
+}
+
+.home-button-daily-activity:hover,
+.home-button-daily-activity:focus-visible {
+  background: #bd4b42;
+  color: #fff;
+}
+
 .quick-navigation {
   position: fixed;
   z-index: 100;
@@ -218,6 +231,116 @@ body {
 .master-data-header h1 {
   margin: 0 0 10px;
   font-size: clamp(30px, 4vw, 44px);
+}
+
+.daily-activity-page {
+  min-height: 100vh;
+  color: #542824;
+}
+
+body:has(.daily-activity-page) {
+  background: #fff2f0;
+}
+
+.daily-activity-page .page-eyebrow {
+  color: #b3453c;
+}
+
+.daily-activity-header h1 {
+  color: #6f2924;
+}
+
+.daily-activity-form-card,
+.daily-activity-list-card {
+  border-color: #ead0cc;
+  box-shadow: 0 14px 32px rgba(126, 49, 43, 0.08);
+}
+
+.daily-activity-form-row {
+  display: grid;
+  grid-template-columns: 180px minmax(260px, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+}
+
+.daily-activity-page .form-field {
+  color: #75423d;
+}
+
+.daily-activity-page .form-field input {
+  border-color: #ddbfba;
+  color: #542824;
+}
+
+.daily-activity-page .form-field input:focus {
+  border-color: #bd4b42;
+  outline-color: rgba(189, 75, 66, 0.15);
+}
+
+.daily-activity-submit {
+  min-width: 104px;
+  margin-top: 22px;
+  background: #bd4b42;
+}
+
+.daily-activity-submit:disabled {
+  background: #aa7c77;
+}
+
+.daily-activity-list-card .student-count {
+  border-color: #dfbbb6;
+  background: #fff2f0;
+  color: #9c3c35;
+}
+
+.daily-activity-table th {
+  background: #f9e7e4;
+  color: #74332e;
+}
+
+.daily-activity-table td:nth-child(2) {
+  width: 180px;
+  color: #8f3b34;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.daily-activity-table tbody tr.hour-record-row-selected,
+.daily-activity-table tbody tr.hour-record-row-selected:hover {
+  background: #fde7e4;
+}
+
+.daily-activity-table .hour-record-selection-mark {
+  border-color: #c66a62;
+  color: #a23932;
+}
+
+.daily-activity-table .hour-record-selection-mark:hover,
+.daily-activity-table .hour-record-selection-mark:focus-visible {
+  border-color: #bd4b42;
+  outline-color: rgba(189, 75, 66, 0.2);
+}
+
+.daily-activity-table th:first-child,
+.daily-activity-table td:first-child {
+  width: 56px;
+}
+
+.daily-activity-table th:last-child,
+.daily-activity-table td:last-child {
+  width: 92px;
+  text-align: center;
+}
+
+.daily-activity-page .list-retry-button {
+  border-color: #bd4b42;
+  color: #a23932;
+}
+
+.daily-activity-page .list-retry-button:hover,
+.daily-activity-page .list-retry-button:focus-visible {
+  background: #bd4b42;
+  color: #fff;
 }
 
 .page-description,
@@ -2347,6 +2470,15 @@ body {
     grid-template-columns: 1fr;
   }
 
+  .daily-activity-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-activity-submit {
+    width: 100%;
+    margin-top: 0;
+  }
+
   .activity-list-filter {
     align-items: flex-start;
     flex-direction: column;
@@ -2386,6 +2518,16 @@ body {
 
   .activity-form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .daily-activity-form-row {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+
+  .daily-activity-submit {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 0;
   }
 
   .hour-record-primary-row {
