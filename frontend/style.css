@@ -2177,6 +2177,14 @@ body {
   color: #fff;
 }
 
+.hour-record-load-more {
+  min-height: 46px;
+  display: grid;
+  place-items: center;
+  color: #6d7d78;
+  font-size: 13px;
+}
+
 .hour-record-batch-delete:disabled {
   cursor: not-allowed;
   opacity: 0.42;

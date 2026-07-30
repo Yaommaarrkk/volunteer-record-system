@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -114,8 +115,24 @@ public class HourRecordController {
     }
 
     @GetMapping("/hour-records")
-    public ResponseEntity<Response<List<HourRecord>>> getHourRecords() {
-        return ResponseEntity.ok(ApiResponse.success(hourRecordRepository.getAll()));
+    public ResponseEntity<Response<List<HourRecord>>> getHourRecords(
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        if (offset < 0 || limit < 1 || limit > 100) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.fail("offset 必須大於等於 0，limit 必須介於 1 到 100"));
+        }
+
+        return ResponseEntity.ok(
+                ApiResponse.success(hourRecordRepository.getPage(offset, limit))
+        );
+    }
+
+    @GetMapping("/hour-records/count")
+    public ResponseEntity<Response<Long>> getHourRecordCount() {
+        return ResponseEntity.ok(ApiResponse.success(hourRecordRepository.getCount()));
     }
 
     @GetMapping("/hour-records/export")

@@ -7,6 +7,7 @@ import Affjax.ResponseFormat as ResponseFormat
 import Affjax.Web as AX
 import Config.Api (apiUrl)
 import Control.Parallel (parallel, sequential)
+import Data.Array as Array
 import Data.Argonaut.Parser (jsonParser)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
@@ -41,8 +42,11 @@ type State =
   { activities :: Array Activity
   , volunteers :: Array Volunteer
   , records :: Array HourRecord
+  , totalRecords :: Int
   , defaultYear :: Int
   , isLoading :: Boolean
+  , isLoadingMore :: Boolean
+  , hasMoreRecords :: Boolean
   , loadError :: Maybe String
   , isSubmitting :: Boolean
   , copiedRecord :: Maybe CopiedHourRecord
@@ -56,7 +60,13 @@ type PageData =
   { activities :: Array Activity
   , volunteers :: Array Volunteer
   , records :: Array HourRecord
+  , totalRecords :: Int
   , defaultYear :: Int
+  }
+
+type RecordOverview =
+  { records :: Array HourRecord
+  , totalRecords :: Int
   }
 
 type ActivitiesResponse =
@@ -75,6 +85,12 @@ type HourRecordsResponse =
   { success :: Boolean
   , message :: String
   , data :: Array HourRecord
+  }
+
+type HourRecordCountResponse =
+  { success :: Boolean
+  , message :: String
+  , data :: Int
   }
 
 type DefaultYearResponse =
@@ -102,7 +118,8 @@ data Action
   = Initialize
   | RetryLoad
   | PageDataLoaded (Either String PageData)
-  | RecordsLoaded (Either String (Array HourRecord))
+  | RecordsLoaded (Either String RecordOverview)
+  | MoreRecordsLoaded (Either String (Array HourRecord))
   | HourRecordFormOutput HourRecordForm.Output
   | HourRecordListOutput HourRecordList.Output
   | HideNotice Int
@@ -114,8 +131,11 @@ initialState =
   { activities: []
   , volunteers: []
   , records: []
+  , totalRecords: 0
   , defaultYear: 2026
   , isLoading: true
+  , isLoadingMore: false
+  , hasMoreRecords: true
   , loadError: Nothing
   , isSubmitting: false
   , copiedRecord: Nothing
@@ -168,7 +188,10 @@ render state =
         unit
         HourRecordList.component
         { records: state.records
+        , totalRecords: state.totalRecords
         , isLoading: state.isLoading
+        , isLoadingMore: state.isLoadingMore
+        , hasMore: state.hasMoreRecords
         , loadError: state.loadError
         }
         HourRecordListOutput
@@ -198,7 +221,13 @@ handleAction = case _ of
     result <- H.liftAff loadPageData
     handleAction (PageDataLoaded result)
   RetryLoad -> do
-    H.modify_ _ { isLoading = true, loadError = Nothing }
+    H.modify_
+      _
+        { isLoading = true
+        , isLoadingMore = false
+        , hasMoreRecords = true
+        , loadError = Nothing
+        }
     result <- H.liftAff loadPageData
     handleAction (PageDataLoaded result)
   PageDataLoaded result -> case result of
@@ -209,13 +238,46 @@ handleAction = case _ of
           { activities = pageData.activities
           , volunteers = pageData.volunteers
           , records = pageData.records
+          , totalRecords = pageData.totalRecords
           , defaultYear = pageData.defaultYear
           , isLoading = false
+          , isLoadingMore = false
+          , hasMoreRecords = Array.length pageData.records < pageData.totalRecords
           , loadError = Nothing
           }
   RecordsLoaded result -> case result of
-    Left message -> H.modify_ _ { isLoading = false, loadError = Just message }
-    Right records -> H.modify_ _ { records = records, isLoading = false, loadError = Nothing }
+    Left message ->
+      H.modify_
+        _
+          { isLoading = false
+          , isLoadingMore = false
+          , loadError = Just message
+          }
+    Right overview ->
+      H.modify_
+        _
+          { records = overview.records
+          , totalRecords = overview.totalRecords
+          , isLoading = false
+          , isLoadingMore = false
+          , hasMoreRecords = Array.length overview.records < overview.totalRecords
+          , loadError = Nothing
+          }
+  MoreRecordsLoaded result -> case result of
+    Left message -> do
+      H.modify_ _ { isLoadingMore = false }
+      showNotice ErrorNotice message
+    Right moreRecords ->
+      H.modify_
+        \state ->
+          let
+            records = state.records <> moreRecords
+          in
+          state
+            { records = records
+            , isLoadingMore = false
+            , hasMoreRecords = Array.length records < state.totalRecords
+            }
   HourRecordFormOutput (HourRecordForm.SubmitHourRecord request) -> do
     H.modify_ _ { isSubmitting = true, notice = Nothing }
     result <- H.liftAff
@@ -237,7 +299,7 @@ handleAction = case _ of
             , successfulSubmitVersion = state.successfulSubmitVersion + 1
             }
         showNotice SuccessNotice message
-        recordsResult <- H.liftAff loadHourRecords
+        recordsResult <- H.liftAff loadRecordOverview
         handleAction (RecordsLoaded recordsResult)
   HourRecordFormOutput (HourRecordForm.UpdateDefaultYear year) -> do
     state <- H.get
@@ -258,7 +320,7 @@ handleAction = case _ of
         showNotice ErrorNotice message
       Right message -> do
         showNotice SuccessNotice message
-        recordsResult <- H.liftAff loadHourRecords
+        recordsResult <- H.liftAff loadRecordOverview
         handleAction (RecordsLoaded recordsResult)
   HourRecordListOutput (HourRecordList.CopyRequested copiedRecord) -> do
     state <- H.get
@@ -268,6 +330,12 @@ handleAction = case _ of
         , copyVersion = state.copyVersion + 1
         }
     showNotice SuccessNotice "已複製到上方輸入區"
+  HourRecordListOutput HourRecordList.LoadMoreRequested -> do
+    state <- H.get
+    when (state.hasMoreRecords && not state.isLoadingMore) do
+      H.modify_ _ { isLoadingMore = true }
+      result <- H.liftAff (loadHourRecordsPage (Array.length state.records))
+      handleAction (MoreRecordsLoaded result)
   HourRecordListOutput HourRecordList.RetryRequested -> handleAction RetryLoad
   HideNotice version -> do
     state <- H.get
@@ -302,10 +370,17 @@ loadPageData = do
           case yearResult of
             Left message -> pure (Left message)
             Right defaultYear -> do
-              recordsResult <- loadHourRecords
-              pure case recordsResult of
+              overviewResult <- loadRecordOverview
+              pure case overviewResult of
                 Left message -> Left message
-                Right records -> Right { activities, volunteers, records, defaultYear }
+                Right overview ->
+                  Right
+                    { activities
+                    , volunteers
+                    , records: overview.records
+                    , totalRecords: overview.totalRecords
+                    , defaultYear
+                    }
 
 loadActivities :: Aff (Either String (Array Activity))
 loadActivities = do
@@ -334,9 +409,44 @@ loadDefaultYear = do
       Left errors -> Left ("預設年份格式錯誤：" <> show errors)
       Right (decoded :: DefaultYearResponse) -> Right decoded.data
 
+hourRecordPageSize :: Int
+hourRecordPageSize = 20
+
 loadHourRecords :: Aff (Either String (Array HourRecord))
-loadHourRecords = do
-  result <- AX.get ResponseFormat.string (apiUrl "/api/hour-records")
+loadHourRecords = loadHourRecordsPage 0
+
+loadRecordOverview :: Aff (Either String RecordOverview)
+loadRecordOverview = do
+  recordsResult <- loadHourRecords
+  case recordsResult of
+    Left message -> pure (Left message)
+    Right records -> do
+      countResult <- loadHourRecordCount
+      pure case countResult of
+        Left message -> Left message
+        Right totalRecords -> Right { records, totalRecords }
+
+loadHourRecordCount :: Aff (Either String Int)
+loadHourRecordCount = do
+  result <- AX.get ResponseFormat.string (apiUrl "/api/hour-records/count")
+  pure case result of
+    Left error -> Left (AX.printError error)
+    Right response -> case readJSON response.body of
+      Left errors -> Left ("時數紀錄總筆數格式錯誤：" <> show errors)
+      Right (decoded :: HourRecordCountResponse) -> Right decoded.data
+
+loadHourRecordsPage :: Int -> Aff (Either String (Array HourRecord))
+loadHourRecordsPage offset = do
+  result <-
+    AX.get
+      ResponseFormat.string
+      ( apiUrl
+          ( "/api/hour-records?offset="
+              <> show offset
+              <> "&limit="
+              <> show hourRecordPageSize
+          )
+      )
   pure case result of
     Left error -> Left (AX.printError error)
     Right response -> case readJSON response.body of

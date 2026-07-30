@@ -60,7 +60,7 @@ public class HourRecordRepository {
                 ));
     }
 
-    public List<HourRecord> getAll() {
+    public List<HourRecord> getPage(int offset, int limit) {
         String sql = """
             SELECT
                 hour_record.id,
@@ -79,10 +79,22 @@ public class HourRecordRepository {
             JOIN activity_type_color
               ON activity_type_color.default_type = hour_record.activity_type
             JOIN volunteer ON volunteer.id = hour_record.volunteer_id
-            ORDER BY hour_record.activity_date DESC, hour_record.id DESC
+            ORDER BY hour_record.created_at DESC, hour_record.id DESC
+            LIMIT ?
+            OFFSET ?
             """;
 
-        return jdbcTemplate.query(sql, HOUR_RECORD_ROW_MAPPER);
+        return jdbcTemplate.query(sql, HOUR_RECORD_ROW_MAPPER, limit, offset);
+    }
+
+    public long getCount() {
+        String sql = """
+            SELECT COUNT(*)
+            FROM hour_record
+            """;
+
+        Long count = jdbcTemplate.queryForObject(sql, Long.class);
+        return count == null ? 0L : count;
     }
 
     @Transactional

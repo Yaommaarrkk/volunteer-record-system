@@ -14,11 +14,13 @@ import Data.String.Common as String
 import Domain.Activity (activityTypeLabel)
 import Domain.HourRecord (CopiedHourRecord, HourRecord)
 import Domain.Volunteer (formatUpdatedAt)
+import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Subscription as HS
 import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent (MouseEvent)
 import Web.UIEvent.MouseEvent as MouseEvent
@@ -30,13 +32,19 @@ type Slots = ()
 
 type Input =
   { records :: Array HourRecord
+  , totalRecords :: Int
   , isLoading :: Boolean
+  , isLoadingMore :: Boolean
+  , hasMore :: Boolean
   , loadError :: Maybe String
   }
 
 type State =
   { records :: Array HourRecord
+  , totalRecords :: Int
   , isLoading :: Boolean
+  , isLoadingMore :: Boolean
+  , hasMore :: Boolean
   , loadError :: Maybe String
   , selectedIds :: Array Int
   , selectionAnchor :: Maybe Int
@@ -44,7 +52,9 @@ type State =
   }
 
 data Action
-  = Receive Input
+  = Initialize
+  | Receive Input
+  | ViewportChanged
   | SelectRecord Int MouseEvent
   | ToggleRecord Int Int MouseEvent
   | CopyRecord HourRecord MouseEvent
@@ -57,14 +67,24 @@ data Action
 data Output
   = DeleteRequested (Array Int)
   | CopyRequested CopiedHourRecord
+  | LoadMoreRequested
   | RetryRequested
+
+foreign import subscribeWindowScroll
+  :: (Unit -> Effect Unit)
+  -> Effect (Effect Unit)
+
+foreign import isLoadMoreSentinelVisible :: Effect Boolean
 
 component :: forall query m. MonadEffect m => H.Component query Input Output m
 component =
   H.mkComponent
     { initialState: \input ->
         { records: input.records
+        , totalRecords: input.totalRecords
         , isLoading: input.isLoading
+        , isLoadingMore: input.isLoadingMore
+        , hasMore: input.hasMore
         , loadError: input.loadError
         , selectedIds: []
         , selectionAnchor: Nothing
@@ -74,7 +94,8 @@ component =
     , eval:
         H.mkEval
           H.defaultEval
-            { handleAction = handleAction
+            { initialize = Just Initialize
+            , handleAction = handleAction
             , receive = Just <<< Receive
             }
     }
@@ -97,7 +118,10 @@ render state =
                 [ HP.class_ (HH.ClassName "student-count") ]
                 [ HH.text
                     ( if Array.null state.selectedIds then
-                        show (Array.length state.records) <> " 筆紀錄"
+                        show (Array.length state.records)
+                          <> " / "
+                          <> show state.totalRecords
+                          <> " 筆紀錄"
                       else
                         "已選 " <> show (Array.length state.selectedIds) <> " 筆"
                     )
@@ -117,6 +141,16 @@ render state =
             ]
         ]
     , renderRecordList state
+    , HH.div
+        [ HP.class_ (HH.ClassName "hour-record-load-more")
+        , HP.attr (HH.AttrName "data-hour-record-load-more") ""
+        ]
+        [ HH.text
+            if state.isLoadingMore then "正在載入更多紀錄…"
+            else if state.hasMore then "繼續往下捲動以載入更多"
+            else if Array.null state.records then ""
+            else "已載入全部紀錄"
+        ]
     ]
 
 renderRecordList :: forall m. State -> H.ComponentHTML Action Slots m
@@ -258,15 +292,33 @@ handleAction
   => Action
   -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
-  Receive input ->
+  Initialize ->
+    void
+      $ H.subscribe
+      $ ViewportChanged
+      <$ HS.makeEmitter subscribeWindowScroll
+  Receive input -> do
     H.modify_
-      _
+      \state ->
+        state
         { records = input.records
+        , totalRecords = input.totalRecords
         , isLoading = input.isLoading
+        , isLoadingMore = input.isLoadingMore
+        , hasMore = input.hasMore
         , loadError = input.loadError
-        , selectedIds = []
-        , selectionAnchor = Nothing
+        , selectedIds =
+            Array.filter
+              (\id -> Array.any (\record -> record.id == id) input.records)
+              state.selectedIds
         }
+  ViewportChanged -> do
+    state <- H.get
+    when (state.hasMore && not state.isLoading && not state.isLoadingMore) do
+      isVisible <- H.liftEffect isLoadMoreSentinelVisible
+      when isVisible do
+        H.modify_ _ { isLoadingMore = true }
+        H.raise LoadMoreRequested
   SelectRecord index event -> do
     state <- H.get
     case Array.index state.records index of
