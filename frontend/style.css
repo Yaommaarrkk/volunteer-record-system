@@ -1917,47 +1917,11 @@ body {
 }
 
 .hour-record-date-inputs {
-  display: grid;
-  grid-template-columns: auto 86px;
-  gap: 7px;
-  justify-content: start;
+  display: block;
 }
 
 .hour-record-date-inputs > input {
-  width: 86px;
-}
-
-.hour-record-year-button {
-  min-width: 70px;
-  min-height: 44px;
-  border: 1px solid #8db8ad;
-  border-radius: 10px;
-  background: #edf7f3;
-  color: #236a5f;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 900;
-}
-
-.hour-record-year-editor {
-  display: grid;
-  grid-template-columns: 68px 30px 30px;
-  gap: 4px;
-}
-
-.hour-record-year-editor input {
-  min-width: 0;
-  padding: 7px;
-}
-
-.hour-record-year-editor button {
-  min-height: 44px;
-  border: 1px solid #b9cec8;
-  border-radius: 8px;
-  background: #fff;
-  color: #25796b;
-  cursor: pointer;
-  font-weight: 900;
+  width: 148px;
 }
 
 .hour-record-participant-field {

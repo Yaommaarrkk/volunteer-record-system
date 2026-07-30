@@ -28,6 +28,7 @@ import Widget.OutsideClick as OutsideClick
 foreign import isPositiveOneDecimal :: String -> Boolean
 foreign import focusHoursInputAfterRender :: Effect Unit
 foreign import focusNoteInputAfterClear :: Effect Unit
+foreign import getTodayIsoDate :: Effect String
 
 type Slot id = forall query. H.Slot query Output id
 
@@ -70,8 +71,6 @@ type State =
   , isOtherStudentsOpen :: Boolean
   , isHoursPickerOpen :: Boolean
   , isNoteModalOpen :: Boolean
-  , isEditingYear :: Boolean
-  , yearDraft :: String
   , dateError :: Maybe String
   , hoursError :: Maybe String
   , participantError :: Maybe String
@@ -95,10 +94,6 @@ data Action
   | SelectQuickHours String
   | SetNote String
   | ClearNote
-  | BeginYearEdit
-  | SetYearDraft String
-  | SaveYear
-  | CancelYearEdit
   | ToggleSeatPicker
   | CloseSeatPicker
   | SelectSeatPeriod String
@@ -136,8 +131,6 @@ initialState input =
     , isOtherStudentsOpen: false
     , isHoursPickerOpen: false
     , isNoteModalOpen: false
-    , isEditingYear: false
-    , yearDraft: show input.defaultYear
     , dateError: Nothing
     , hoursError: Nothing
     , participantError: Nothing
@@ -325,28 +318,9 @@ renderDateField state =
     [ HH.span_ [ HH.text "日期" ]
     , HH.div
         [ HP.class_ (HH.ClassName "hour-record-date-inputs") ]
-        [ if state.isEditingYear then
-            HH.div
-              [ HP.class_ (HH.ClassName "hour-record-year-editor") ]
-              [ HH.input
-                  [ HP.type_ HP.InputText
-                  , HP.value state.yearDraft
-                  , HE.onValueInput SetYearDraft
-                  ]
-              , HH.button [ HE.onClick \_ -> SaveYear ] [ HH.text "✓" ]
-              , HH.button [ HE.onClick \_ -> CancelYearEdit ] [ HH.text "↻" ]
-              ]
-          else
-            HH.button
-              [ HP.class_ (HH.ClassName "hour-record-year-button")
-              , HP.attr (HH.AttrName "title") "修改預設年份"
-              , HE.onClick \_ -> BeginYearEdit
-              ]
-              [ HH.text (show state.defaultYear) ]
-        , HH.input
-            [ HP.type_ HP.InputText
-            , HP.placeholder "例如 7/15"
-            , HP.value state.dateText
+        [ HH.input
+            [ HP.type_ HP.InputDate
+            , HP.value (dateInputValue state)
             , HE.onValueInput SetDate
             ]
         ]
@@ -550,6 +524,8 @@ handleAction = case _ of
   Initialize -> do
     void $ H.subscribe (ClickedOutsideParticipant <$ OutsideClick.outsideClickEmitter ".hour-record-participant-field")
     void $ H.subscribe (ClickedOutsideHours <$ OutsideClick.outsideClickEmitter ".hour-record-hours-field")
+    today <- H.liftEffect getTodayIsoDate
+    handleAction (SetDate today)
   ClickedOutsideParticipant -> H.modify_ _ { isSeatPickerOpen = false, isOtherStudentsOpen = false }
   ClickedOutsideHours -> H.modify_ _ { isHoursPickerOpen = false }
   Receive input -> do
@@ -588,7 +564,6 @@ handleAction = case _ of
         , participantError = if shouldClearParticipants then Nothing else state.participantError
         , isSubmitting = input.isSubmitting
         , isHoursPickerOpen = if hasSuccessfulSubmit then false else state.isHoursPickerOpen
-        , yearDraft = show activeYear
         , copyVersion = input.copyVersion
         , successfulSubmitVersion = input.successfulSubmitVersion
         }
@@ -613,7 +588,23 @@ handleAction = case _ of
         }
   SetDate value -> do
     state <- H.get
-    H.modify_ _ { dateText = value, dateError = validateDate state.defaultYear value }
+    case parseIsoDateText value of
+      Nothing ->
+        H.modify_
+          _
+            { dateText = ""
+            , dateError = Just "日期不能為空"
+            }
+      Just date -> do
+        let dateText = show date.month <> "/" <> show date.day
+        H.modify_
+          _
+            { defaultYear = date.year
+            , dateText = dateText
+            , dateError = validateDate date.year dateText
+            }
+        when (date.year /= state.savedDefaultYear)
+          $ H.raise (UpdateDefaultYear date.year)
   SetHours value -> H.modify_ _ { hoursText = value, hoursError = validateHours value }
   OpenHoursPicker -> do
     H.modify_
@@ -635,21 +626,6 @@ handleAction = case _ of
   ClearNote -> do
     H.modify_ _ { note = "" }
     H.liftEffect focusNoteInputAfterClear
-  BeginYearEdit -> H.modify_ \state -> state { isEditingYear = true, yearDraft = show state.defaultYear }
-  SetYearDraft year -> H.modify_ _ { yearDraft = year }
-  SaveYear -> do
-    state <- H.get
-    case Int.fromString (String.trim state.yearDraft) of
-      Just year | year >= 2000 && year <= 2100 -> do
-        H.modify_
-          _
-            { defaultYear = year
-            , isEditingYear = false
-            , dateError = validateDate year state.dateText
-            }
-        H.raise (UpdateDefaultYear year)
-      _ -> H.modify_ _ { dateError = Just "年份必須介於 2000 到 2100" }
-  CancelYearEdit -> H.modify_ \state -> state { isEditingYear = false, yearDraft = show state.defaultYear }
   ToggleSeatPicker ->
     H.modify_ \state ->
       if state.isSeatPickerOpen then state { isSeatPickerOpen = false, isOtherStudentsOpen = false }
@@ -733,6 +709,11 @@ parseDate year value = do
   else
     Nothing
 
+dateInputValue :: State -> String
+dateInputValue state =
+  fromMaybe ""
+    (parseDate state.defaultYear state.dateText)
+
 parseMonthDay :: String -> Maybe { month :: Int, day :: Int }
 parseMonthDay value = case String.split (Pattern "/") (String.trim value) of
   [ monthText, dayText ] -> do
@@ -742,7 +723,10 @@ parseMonthDay value = case String.split (Pattern "/") (String.trim value) of
   _ -> Nothing
 
 parseIsoDate :: CopiedHourRecord -> Maybe { year :: Int, month :: Int, day :: Int }
-parseIsoDate record = case String.split (Pattern "-") record.activityDate of
+parseIsoDate record = parseIsoDateText record.activityDate
+
+parseIsoDateText :: String -> Maybe { year :: Int, month :: Int, day :: Int }
+parseIsoDateText value = case String.split (Pattern "-") value of
   [ yearText, monthText, dayText ] -> do
     year <- Int.fromString yearText
     month <- Int.fromString monthText
