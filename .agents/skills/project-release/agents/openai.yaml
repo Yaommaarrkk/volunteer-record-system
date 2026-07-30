@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Release"
+  short_description: "安全檢查、驗證、提交並推送志工時數紀錄系統的修改"
+  default_prompt: "Use $project-release to verify, commit, and push the current project changes without deploying."
