@@ -9,6 +9,7 @@ module Widget.HourRecordForm
 import Prelude
 
 import Data.Array as Array
+import Data.Either (Either(..))
 import Data.Int as Int
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Number as Number
@@ -23,12 +24,16 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Simple.JSON (readJSON, writeJSON)
 import Widget.OutsideClick as OutsideClick
 
 foreign import isPositiveOneDecimal :: String -> Boolean
 foreign import focusHoursInputAfterRender :: Effect Unit
 foreign import focusNoteInputAfterClear :: Effect Unit
 foreign import getTodayIsoDate :: Effect String
+foreign import loadHourRecordDraft :: Effect String
+foreign import saveHourRecordDraft :: String -> Effect Unit
+foreign import clearHourRecordDraft :: Effect Unit
 
 type Slot id = forall query. H.Slot query Output id
 
@@ -52,6 +57,18 @@ type CreateHourRecordRequest =
   , hours :: Number
   , note :: String
   , volunteerIds :: Array Int
+  }
+
+type SavedDraft =
+  { activityId :: Int
+  , activityType :: String
+  , defaultYear :: Int
+  , dateText :: String
+  , hoursText :: String
+  , note :: String
+  , volunteerIds :: Array Int
+  , seatPeriod :: String
+  , clearParticipantsAfterSubmit :: Boolean
   }
 
 type State =
@@ -524,8 +541,15 @@ handleAction = case _ of
   Initialize -> do
     void $ H.subscribe (ClickedOutsideParticipant <$ OutsideClick.outsideClickEmitter ".hour-record-participant-field")
     void $ H.subscribe (ClickedOutsideHours <$ OutsideClick.outsideClickEmitter ".hour-record-hours-field")
-    today <- H.liftEffect getTodayIsoDate
-    handleAction (SetDate today)
+    storedDraft <- H.liftEffect loadHourRecordDraft
+    case readJSON storedDraft of
+      Right (draft :: SavedDraft) ->
+        H.modify_ (restoreSavedDraft draft)
+      Left _ -> do
+        when (String.trim storedDraft /= "")
+          $ H.liftEffect clearHourRecordDraft
+        today <- H.liftEffect getTodayIsoDate
+        handleAction (SetDate today)
   ClickedOutsideParticipant -> H.modify_ _ { isSeatPickerOpen = false, isOtherStudentsOpen = false }
   ClickedOutsideHours -> H.modify_ _ { isHoursPickerOpen = false }
   Receive input -> do
@@ -567,6 +591,8 @@ handleAction = case _ of
         , copyVersion = input.copyVersion
         , successfulSubmitVersion = input.successfulSubmitVersion
         }
+    when (hasNewCopy || shouldClearParticipants)
+      persistDraft
   SelectActivity value -> case Int.fromString value of
     Nothing -> pure unit
     Just id -> do
@@ -574,14 +600,14 @@ handleAction = case _ of
       case Array.find (\activity -> activity.id == id) state.activities of
         Nothing -> pure unit
         Just _ ->
-          H.modify_
+          modifyAndPersist
             _
               { selectedActivityId = Just id
               }
   SetActivityType activityType -> do
     state <- H.get
     let selectedActivity = Array.find (\activity -> activity.defaultType == activityType) state.activities
-    H.modify_
+    modifyAndPersist
       _
         { activityType = activityType
         , selectedActivityId = map _.id selectedActivity
@@ -590,14 +616,14 @@ handleAction = case _ of
     state <- H.get
     case parseIsoDateText value of
       Nothing ->
-        H.modify_
+        modifyAndPersist
           _
             { dateText = ""
             , dateError = Just "日期不能為空"
             }
       Just date -> do
         let dateText = show date.month <> "/" <> show date.day
-        H.modify_
+        modifyAndPersist
           _
             { defaultYear = date.year
             , dateText = dateText
@@ -605,7 +631,7 @@ handleAction = case _ of
             }
         when (date.year /= state.savedDefaultYear)
           $ H.raise (UpdateDefaultYear date.year)
-  SetHours value -> H.modify_ _ { hoursText = value, hoursError = validateHours value }
+  SetHours value -> modifyAndPersist _ { hoursText = value, hoursError = validateHours value }
   OpenHoursPicker -> do
     H.modify_
       _
@@ -616,15 +642,15 @@ handleAction = case _ of
     H.liftEffect focusHoursInputAfterRender
   CloseHoursPicker -> H.modify_ _ { isHoursPickerOpen = false }
   SelectQuickHours value ->
-    H.modify_
+    modifyAndPersist
       _
         { hoursText = value
         , hoursError = Nothing
         , isHoursPickerOpen = false
         }
-  SetNote note -> H.modify_ _ { note = note }
+  SetNote note -> modifyAndPersist _ { note = note }
   ClearNote -> do
-    H.modify_ _ { note = "" }
+    modifyAndPersist _ { note = "" }
     H.liftEffect focusNoteInputAfterClear
   ToggleSeatPicker ->
     H.modify_ \state ->
@@ -638,9 +664,9 @@ handleAction = case _ of
           }
   CloseSeatPicker -> H.modify_ _ { isSeatPickerOpen = false, isOtherStudentsOpen = false }
   SelectSeatPeriod value ->
-    H.modify_ _ { selectedSeatPeriod = seatPeriodFromApi value, isOtherStudentsOpen = false }
+    modifyAndPersist _ { selectedSeatPeriod = seatPeriodFromApi value, isOtherStudentsOpen = false }
   ToggleDraftVolunteer id ->
-    H.modify_ \state ->
+    modifyAndPersist \state ->
       let
         volunteerIds =
           if Array.elem id state.draftVolunteerIds then
@@ -655,7 +681,7 @@ handleAction = case _ of
           }
   ToggleOtherStudents -> H.modify_ \state -> state { isOtherStudentsOpen = not state.isOtherStudentsOpen }
   ClearDraftVolunteers ->
-    H.modify_
+    modifyAndPersist
       _
         { draftVolunteerIds = []
         , selectedVolunteerIds = []
@@ -664,7 +690,8 @@ handleAction = case _ of
   ConfirmVolunteers -> H.modify_ _ { isSeatPickerOpen = false, isOtherStudentsOpen = false }
   OpenNoteModal -> H.modify_ _ { isNoteModalOpen = true }
   CloseNoteModal -> H.modify_ _ { isNoteModalOpen = false }
-  SetClearParticipantsAfterSubmit value -> H.modify_ _ { clearParticipantsAfterSubmit = value }
+  SetClearParticipantsAfterSubmit value ->
+    modifyAndPersist _ { clearParticipantsAfterSubmit = value }
   Submit -> do
     state <- H.get
     let dateError = validateDate state.defaultYear state.dateText
@@ -690,6 +717,52 @@ handleAction = case _ of
                   }
               )
       _, _, _ -> pure unit
+
+modifyAndPersist
+  :: forall m
+   . MonadEffect m
+  => (State -> State)
+  -> H.HalogenM State Action Slots Output m Unit
+modifyAndPersist updateState = do
+  H.modify_ updateState
+  persistDraft
+
+persistDraft
+  :: forall m
+   . MonadEffect m
+  => H.HalogenM State Action Slots Output m Unit
+persistDraft = do
+  state <- H.get
+  H.liftEffect
+    $ saveHourRecordDraft
+    $ writeJSON
+        { activityId: fromMaybe 0 state.selectedActivityId
+        , activityType: state.activityType
+        , defaultYear: state.defaultYear
+        , dateText: state.dateText
+        , hoursText: state.hoursText
+        , note: state.note
+        , volunteerIds: state.selectedVolunteerIds
+        , seatPeriod: seatPeriodToApi state.selectedSeatPeriod
+        , clearParticipantsAfterSubmit: state.clearParticipantsAfterSubmit
+        }
+
+restoreSavedDraft :: SavedDraft -> State -> State
+restoreSavedDraft draft state =
+  state
+    { selectedActivityId =
+        if draft.activityId > 0 then Just draft.activityId
+        else Nothing
+    , activityType = draft.activityType
+    , defaultYear = draft.defaultYear
+    , dateText = draft.dateText
+    , hoursText = draft.hoursText
+    , note = draft.note
+    , selectedVolunteerIds = draft.volunteerIds
+    , draftVolunteerIds = draft.volunteerIds
+    , selectedSeatPeriod = seatPeriodFromApi draft.seatPeriod
+    , clearParticipantsAfterSubmit = draft.clearParticipantsAfterSubmit
+    }
 
 validateDate :: Int -> String -> Maybe String
 validateDate year value =
