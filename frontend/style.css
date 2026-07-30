@@ -2156,6 +2156,27 @@ body {
   align-items: center;
 }
 
+.hour-record-download-button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #2f855a;
+  border-radius: 9px;
+  padding: 0 13px;
+  background: #f0fff4;
+  color: #276749;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.hour-record-download-button:hover,
+.hour-record-download-button:focus-visible {
+  background: #2f855a;
+  color: #fff;
+}
+
 .hour-record-batch-delete:disabled {
   cursor: not-allowed;
   opacity: 0.42;

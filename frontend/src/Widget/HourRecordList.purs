@@ -7,6 +7,7 @@ module Widget.HourRecordList
 
 import Prelude
 
+import Config.Api (apiUrl)
 import Data.Array as Array
 import Data.Maybe (Maybe(..))
 import Data.String.Common as String
@@ -107,6 +108,12 @@ render state =
                 , HE.onClick \_ -> AskDelete
                 ]
                 [ HH.text "刪除選取" ]
+            , HH.a
+                [ HP.class_ (HH.ClassName "hour-record-download-button")
+                , HP.href (apiUrl "/api/hour-records/export")
+                , HP.attr (HH.AttrName "download") ""
+                ]
+                [ HH.text "下載資料備份" ]
             ]
         ]
     , renderRecordList state

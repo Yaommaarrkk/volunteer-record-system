@@ -6,9 +6,14 @@ import com.example.backend.dto.request.UpdateDefaultRecordYearRequest;
 import com.example.backend.dto.response.Response;
 import com.example.backend.domain.HourRecord;
 import com.example.backend.repository.HourRecordRepository;
+import com.example.backend.repository.DatabaseBackupRepository;
 import com.example.backend.repository.RecordSettingRepository;
+import com.example.backend.service.DatabaseExcelBackupExporter;
 import com.example.backend.util.ApiResponse;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api")
@@ -30,13 +36,19 @@ import java.util.List;
 public class HourRecordController {
     private final HourRecordRepository hourRecordRepository;
     private final RecordSettingRepository recordSettingRepository;
+    private final DatabaseBackupRepository databaseBackupRepository;
+    private final DatabaseExcelBackupExporter databaseExcelBackupExporter;
 
     public HourRecordController(
             HourRecordRepository hourRecordRepository,
-            RecordSettingRepository recordSettingRepository
+            RecordSettingRepository recordSettingRepository,
+            DatabaseBackupRepository databaseBackupRepository,
+            DatabaseExcelBackupExporter databaseExcelBackupExporter
     ) {
         this.hourRecordRepository = hourRecordRepository;
         this.recordSettingRepository = recordSettingRepository;
+        this.databaseBackupRepository = databaseBackupRepository;
+        this.databaseExcelBackupExporter = databaseExcelBackupExporter;
     }
 
     @GetMapping("/record-settings/default-year")
@@ -104,6 +116,25 @@ public class HourRecordController {
     @GetMapping("/hour-records")
     public ResponseEntity<Response<List<HourRecord>>> getHourRecords() {
         return ResponseEntity.ok(ApiResponse.success(hourRecordRepository.getAll()));
+    }
+
+    @GetMapping("/hour-records/export")
+    public ResponseEntity<byte[]> exportHourRecords() {
+        byte[] workbook = databaseExcelBackupExporter.export(
+                databaseBackupRepository.getBackupSheets()
+        );
+        String filename = "volunteer_record_backup_" + LocalDate.now() + ".xlsx";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ))
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(filename).build().toString()
+                )
+                .contentLength(workbook.length)
+                .body(workbook);
     }
 
     @PostMapping("/hour-records/delete")
