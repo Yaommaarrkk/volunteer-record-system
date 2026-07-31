@@ -328,8 +328,34 @@ body:has(.daily-activity-page) {
 
 .daily-activity-table th:last-child,
 .daily-activity-table td:last-child {
-  width: 92px;
+  width: 156px;
   text-align: center;
+}
+
+.daily-activity-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.daily-activity-copy-button {
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid #4f9b70;
+  border-radius: 8px;
+  background: #f2fbf5;
+  color: #257348;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.daily-activity-copy-button:hover,
+.daily-activity-copy-button:focus-visible {
+  border-color: #257348;
+  background: #257348;
+  color: #fff;
 }
 
 .daily-activity-page .list-retry-button {

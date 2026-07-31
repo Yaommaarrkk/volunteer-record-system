@@ -10,7 +10,6 @@ import Prelude
 import Data.Array as Array
 import Data.Maybe (Maybe(..))
 import Data.String.Common as String
-import Data.String.Pattern (Pattern(..), Replacement(..))
 import Domain.DailyActivity (DailyActivity)
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
@@ -55,6 +54,7 @@ data Action
   | ViewportChanged
   | SelectActivity Int MouseEvent
   | ToggleActivity String Int MouseEvent
+  | CopyActivityDescription String MouseEvent
   | AskDeleteActivity String MouseEvent
   | AskDelete
   | CancelDelete
@@ -62,7 +62,8 @@ data Action
   | Retry
 
 data Output
-  = DeleteRequested (Array String)
+  = CopyRequested String
+  | DeleteRequested (Array String)
   | LoadMoreRequested
   | RetryRequested
 
@@ -71,6 +72,7 @@ foreign import subscribeWindowScroll
   -> Effect (Effect Unit)
 
 foreign import isLoadMoreSentinelVisible :: Effect Boolean
+foreign import formatActivityDate :: String -> String
 
 component :: forall query m. MonadEffect m => H.Component query Input Output m
 component =
@@ -201,15 +203,24 @@ renderActivity selectedDates index activity =
               ]
               [ HH.text if isSelected then "✓" else "" ]
           ]
-      , HH.td_ [ HH.text (formatDate activity.activityDate) ]
+      , HH.td_ [ HH.text (formatActivityDate activity.activityDate) ]
       , HH.td_ [ HH.text activity.description ]
       , HH.td_
-          [ HH.button
-              [ HP.class_ (HH.ClassName "student-delete-button")
-              , HP.attr (HH.AttrName "title") "刪除這筆當日活動"
-              , HE.onClick (AskDeleteActivity activity.activityDate)
+          [ HH.div
+              [ HP.class_ (HH.ClassName "daily-activity-actions") ]
+              [ HH.button
+                  [ HP.class_ (HH.ClassName "daily-activity-copy-button")
+                  , HP.attr (HH.AttrName "title") "複製當日主要活動到上方輸入欄"
+                  , HE.onClick (CopyActivityDescription activity.description)
+                  ]
+                  [ HH.text "複製" ]
+              , HH.button
+                  [ HP.class_ (HH.ClassName "student-delete-button")
+                  , HP.attr (HH.AttrName "title") "刪除這筆當日活動"
+                  , HE.onClick (AskDeleteActivity activity.activityDate)
+                  ]
+                  [ HH.text "刪除" ]
               ]
-              [ HH.text "刪除" ]
           ]
       ]
 
@@ -239,9 +250,6 @@ renderDeleteDialog selectedCount =
             ]
         ]
     ]
-
-formatDate :: String -> String
-formatDate = String.replaceAll (Pattern "-") (Replacement "/")
 
 handleAction
   :: forall m
@@ -334,6 +342,9 @@ handleAction = case _ of
               Array.snoc state.selectedDates activityDate
         , selectionAnchor = Just index
         }
+  CopyActivityDescription description event -> do
+    H.liftEffect (Event.stopPropagation (MouseEvent.toEvent event))
+    H.raise (CopyRequested (String.trim description))
   AskDeleteActivity activityDate event -> do
     H.liftEffect (Event.stopPropagation (MouseEvent.toEvent event))
     H.modify_

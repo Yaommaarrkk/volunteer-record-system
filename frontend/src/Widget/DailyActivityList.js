@@ -30,3 +30,18 @@ export const isLoadMoreSentinelVisible = () => {
 
   return sentinel.getBoundingClientRect().top <= window.innerHeight + 160;
 };
+
+export const formatActivityDate = (value) => {
+  const [yearText, monthText, dayText] = value.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return value.replaceAll("-", "/");
+  }
+
+  const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+  const weekday = weekdays[new Date(year, month - 1, day).getDay()];
+  return `${yearText}/${monthText}/${dayText}(${weekday})`;
+};

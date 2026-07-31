@@ -8,7 +8,7 @@ module Widget.DailyActivityForm
 
 import Prelude
 
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String.CodeUnits as CodeUnits
 import Data.String.Common as String
 import Effect (Effect)
@@ -26,6 +26,8 @@ type Slots = ()
 type Input =
   { isSubmitting :: Boolean
   , successfulSubmitVersion :: Int
+  , copiedDescription :: Maybe String
+  , copyVersion :: Int
   }
 
 type SaveDailyActivityRequest =
@@ -40,6 +42,7 @@ type State =
   , descriptionError :: Maybe String
   , isSubmitting :: Boolean
   , successfulSubmitVersion :: Int
+  , copyVersion :: Int
   }
 
 data Action
@@ -53,6 +56,7 @@ data Output
   = SaveDailyActivity SaveDailyActivityRequest
 
 foreign import getTodayIsoDate :: Effect String
+foreign import trimLeadingDescriptionWhitespace :: String -> String
 
 component :: forall query m. MonadEffect m => H.Component query Input Output m
 component =
@@ -64,6 +68,7 @@ component =
         , descriptionError: Nothing
         , isSubmitting: input.isSubmitting
         , successfulSubmitVersion: input.successfulSubmitVersion
+        , copyVersion: input.copyVersion
         }
     , render
     , eval:
@@ -136,16 +141,20 @@ handleAction = case _ of
     state <- H.get
     let hasSuccessfulSubmit =
           input.successfulSubmitVersion /= state.successfulSubmitVersion
+    let hasCopiedDescription = input.copyVersion /= state.copyVersion
     H.modify_
       _
         { description =
             if hasSuccessfulSubmit then ""
+            else if hasCopiedDescription then String.trim (fromMaybe state.description input.copiedDescription)
             else state.description
         , descriptionError =
             if hasSuccessfulSubmit then Nothing
+            else if hasCopiedDescription then Nothing
             else state.descriptionError
         , isSubmitting = input.isSubmitting
         , successfulSubmitVersion = input.successfulSubmitVersion
+        , copyVersion = input.copyVersion
         }
   SetActivityDate activityDate ->
     H.modify_
@@ -156,10 +165,12 @@ handleAction = case _ of
             else Nothing
         }
   SetDescription description ->
+    let cleanedDescription = trimLeadingDescriptionWhitespace description
+    in
     H.modify_
       _
-        { description = description
-        , descriptionError = validateDescription description
+        { description = cleanedDescription
+        , descriptionError = validateDescription cleanedDescription
         }
   Submit -> do
     state <- H.get

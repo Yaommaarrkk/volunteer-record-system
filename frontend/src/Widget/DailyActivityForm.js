@@ -5,3 +5,5 @@ export const getTodayIsoDate = () => {
   const day = String(today.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
+export const trimLeadingDescriptionWhitespace = (value) => value.replace(/^\s+/, "");

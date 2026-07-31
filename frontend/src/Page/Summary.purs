@@ -10,6 +10,7 @@ import Data.Maybe (Maybe(..))
 import Domain.ActivityRanking (ActivityRanking)
 import Domain.DailyHourTotal (DailyHourTotal)
 import Domain.VolunteerHourSummary (VolunteerHourSummary)
+import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -21,6 +22,9 @@ import Type.Proxy (Proxy(..))
 import Widget.ActivityRanking as ActivityRanking
 import Widget.DailyHourChart as DailyHourChart
 import Widget.VolunteerHourSummary as VolunteerHourSummary
+
+foreign import loadSelectedSummaryView :: Effect String
+foreign import saveSelectedSummaryView :: String -> Effect Unit
 
 type Slot id = forall query. H.Slot query Output id
 
@@ -175,6 +179,12 @@ summaryViewValue = case _ of
   DailyTotal -> "daily-total"
   ActivityRankingView -> "activity-ranking"
 
+summaryViewFromValue :: String -> SummaryView
+summaryViewFromValue = case _ of
+  "daily-total" -> DailyTotal
+  "activity-ranking" -> ActivityRankingView
+  _ -> StudentComparison
+
 handleAction
   :: forall m
    . MonadAff m
@@ -182,18 +192,16 @@ handleAction
   -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   Initialize -> do
+    storedView <- H.liftEffect loadSelectedSummaryView
+    H.modify_ _ { selectedView = summaryViewFromValue storedView }
     loadVolunteerSummaries
     loadDailyTotals
     loadActivityRankings
-  SelectView value ->
+  SelectView value -> do
     H.modify_
       _
-        { selectedView =
-            case value of
-              "daily-total" -> DailyTotal
-              "activity-ranking" -> ActivityRankingView
-              _ -> StudentComparison
-        }
+        { selectedView = summaryViewFromValue value }
+    H.liftEffect (saveSelectedSummaryView value)
   VolunteerSummaryOutput VolunteerHourSummary.RetryRequested -> loadVolunteerSummaries
   DailyHourChartOutput DailyHourChart.RetryRequested -> loadDailyTotals
   ActivityRankingOutput ActivityRanking.RetryRequested -> loadActivityRankings

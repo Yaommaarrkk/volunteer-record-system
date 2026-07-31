@@ -28,6 +28,23 @@ export const getTodayIsoDate = () => {
 
 const hourRecordDraftKey = "volunteer-record-system.hour-record-draft";
 const hourRecordDraftLifetimeMs = 3 * 60 * 60 * 1000;
+const selectedSeatPeriodKey = "volunteer-record-system.selected-seat-period";
+
+export const loadSelectedSeatPeriod = () => {
+  try {
+    return window.localStorage.getItem(selectedSeatPeriodKey) ?? "";
+  } catch {
+    return "";
+  }
+};
+
+export const saveSelectedSeatPeriod = value => () => {
+  try {
+    window.localStorage.setItem(selectedSeatPeriodKey, value);
+  } catch {
+    // localStorage 不可用時維持原本選擇行為。
+  }
+};
 
 export const loadHourRecordDraft = () => {
   try {

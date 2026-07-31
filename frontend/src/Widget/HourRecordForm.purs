@@ -34,6 +34,8 @@ foreign import getTodayIsoDate :: Effect String
 foreign import loadHourRecordDraft :: Effect String
 foreign import saveHourRecordDraft :: String -> Effect Unit
 foreign import clearHourRecordDraft :: Effect Unit
+foreign import loadSelectedSeatPeriod :: Effect String
+foreign import saveSelectedSeatPeriod :: String -> Effect Unit
 
 type Slot id = forall query. H.Slot query Output id
 
@@ -541,6 +543,7 @@ handleAction = case _ of
   Initialize -> do
     void $ H.subscribe (ClickedOutsideParticipant <$ OutsideClick.outsideClickEmitter ".hour-record-participant-field")
     void $ H.subscribe (ClickedOutsideHours <$ OutsideClick.outsideClickEmitter ".hour-record-hours-field")
+    storedSeatPeriod <- H.liftEffect loadSelectedSeatPeriod
     storedDraft <- H.liftEffect loadHourRecordDraft
     case readJSON storedDraft of
       Right (draft :: SavedDraft) ->
@@ -550,6 +553,10 @@ handleAction = case _ of
           $ H.liftEffect clearHourRecordDraft
         today <- H.liftEffect getTodayIsoDate
         handleAction (SetDate today)
+    case storedSeatPeriod of
+      "YEAR_114_SECOND_SEMESTER" -> H.modify_ _ { selectedSeatPeriod = Year114SecondSemester }
+      "YEAR_115_SUMMER" -> H.modify_ _ { selectedSeatPeriod = Year115Summer }
+      _ -> pure unit
   ClickedOutsideParticipant -> H.modify_ _ { isSeatPickerOpen = false, isOtherStudentsOpen = false }
   ClickedOutsideHours -> H.modify_ _ { isHoursPickerOpen = false }
   Receive input -> do
@@ -663,8 +670,9 @@ handleAction = case _ of
           , draftVolunteerIds = state.selectedVolunteerIds
           }
   CloseSeatPicker -> H.modify_ _ { isSeatPickerOpen = false, isOtherStudentsOpen = false }
-  SelectSeatPeriod value ->
+  SelectSeatPeriod value -> do
     modifyAndPersist _ { selectedSeatPeriod = seatPeriodFromApi value, isOtherStudentsOpen = false }
+    H.liftEffect (saveSelectedSeatPeriod value)
   ToggleDraftVolunteer id ->
     modifyAndPersist \state ->
       let

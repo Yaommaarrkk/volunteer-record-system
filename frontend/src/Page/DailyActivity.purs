@@ -4,6 +4,7 @@ import Prelude
 
 import Affjax.RequestBody as RequestBody
 import Affjax.ResponseFormat as ResponseFormat
+import Affjax.StatusCode (StatusCode(..))
 import Affjax.Web as AX
 import Config.Api (apiUrl)
 import Data.Array as Array
@@ -44,6 +45,8 @@ type State =
   , loadError :: Maybe String
   , isSubmitting :: Boolean
   , successfulSubmitVersion :: Int
+  , copiedDescription :: Maybe String
+  , copyVersion :: Int
   , notice :: Maybe Notice
   , noticeVersion :: Int
   }
@@ -100,6 +103,8 @@ initialState =
   , loadError: Nothing
   , isSubmitting: false
   , successfulSubmitVersion: 0
+  , copiedDescription: Nothing
+  , copyVersion: 0
   , notice: Nothing
   , noticeVersion: 0
   }
@@ -135,6 +140,8 @@ render state =
         DailyActivityForm.component
         { isSubmitting: state.isSubmitting
         , successfulSubmitVersion: state.successfulSubmitVersion
+        , copiedDescription: state.copiedDescription
+        , copyVersion: state.copyVersion
         }
         DailyActivityFormOutput
     , HH.slot
@@ -233,6 +240,13 @@ handleAction = case _ of
       Right message -> do
         showNotice SuccessNotice message
         loadActivities
+  DailyActivityListOutput (DailyActivityList.CopyRequested description) -> do
+    state <- H.get
+    H.modify_
+      _
+        { copiedDescription = Just description
+        , copyVersion = state.copyVersion + 1
+        }
   DailyActivityListOutput DailyActivityList.LoadMoreRequested -> do
     state <- H.get
     when (state.hasMoreActivities && not state.isLoadingMore) do
@@ -306,11 +320,14 @@ requestDailyActivityPage offset = do
       )
   pure case result of
     Left error -> Left (AX.printError error)
-    Right response -> case readJSON response.body of
-      Left errors -> Left ("當日活動格式錯誤：" <> show errors)
-      Right (decoded :: DailyActivitiesResponse) ->
-        if decoded.success then Right decoded.data
-        else Left decoded.message
+    Right response ->
+      if isDatabaseConnectionError response.status then
+        Left databaseConnectionErrorMessage
+      else case readJSON response.body of
+        Left errors -> Left ("當日活動格式錯誤：" <> show errors)
+        Right (decoded :: DailyActivitiesResponse) ->
+          if decoded.success then Right decoded.data
+          else Left decoded.message
 
 requestDailyActivityCount :: Aff (Either String Int)
 requestDailyActivityCount = do
@@ -320,11 +337,14 @@ requestDailyActivityCount = do
       (apiUrl "/api/daily-activities/count")
   pure case result of
     Left error -> Left (AX.printError error)
-    Right response -> case readJSON response.body of
-      Left errors -> Left ("當日活動總筆數格式錯誤：" <> show errors)
-      Right (decoded :: DailyActivityCountResponse) ->
-        if decoded.success then Right decoded.data
-        else Left decoded.message
+    Right response ->
+      if isDatabaseConnectionError response.status then
+        Left databaseConnectionErrorMessage
+      else case readJSON response.body of
+        Left errors -> Left ("當日活動總筆數格式錯誤：" <> show errors)
+        Right (decoded :: DailyActivityCountResponse) ->
+          if decoded.success then Right decoded.data
+          else Left decoded.message
 
 saveDailyActivity
   :: DailyActivityForm.SaveDailyActivityRequest
@@ -339,11 +359,14 @@ saveDailyActivity request = case jsonParser (writeJSON request) of
         (Just (RequestBody.json json))
     pure case result of
       Left error -> Left (AX.printError error)
-      Right response -> case readJSON response.body of
-        Left errors -> Left ("儲存當日活動回應格式錯誤：" <> show errors)
-        Right (decoded :: MutationResponse) ->
-          if decoded.success then Right decoded.message
-          else Left decoded.message
+      Right response ->
+        if isDatabaseConnectionError response.status then
+          Left databaseConnectionErrorMessage
+        else case readJSON response.body of
+          Left errors -> Left ("儲存當日活動回應格式錯誤：" <> show errors)
+          Right (decoded :: MutationResponse) ->
+            if decoded.success then Right decoded.message
+            else Left decoded.message
 
 deleteDailyActivities :: Array String -> Aff (Either String String)
 deleteDailyActivities activityDates =
@@ -359,8 +382,18 @@ postMutation url body operation = case jsonParser body of
     result <- AX.post ResponseFormat.string url (Just (RequestBody.json json))
     pure case result of
       Left error -> Left (AX.printError error)
-      Right response -> case readJSON response.body of
-        Left errors -> Left (operation <> "回應格式錯誤：" <> show errors)
-        Right (decoded :: MutationResponse) ->
-          if decoded.success then Right decoded.message
-          else Left decoded.message
+      Right response ->
+        if isDatabaseConnectionError response.status then
+          Left databaseConnectionErrorMessage
+        else case readJSON response.body of
+          Left errors -> Left (operation <> "回應格式錯誤：" <> show errors)
+          Right (decoded :: MutationResponse) ->
+            if decoded.success then Right decoded.message
+            else Left decoded.message
+
+isDatabaseConnectionError :: StatusCode -> Boolean
+isDatabaseConnectionError (StatusCode status) = status == 500
+
+databaseConnectionErrorMessage :: String
+databaseConnectionErrorMessage =
+  "後端無法連線到資料庫。請確認本機 PostgreSQL 已啟動，並檢查 backend/.env 的 DB_URL、DB_USERNAME、DB_PASSWORD 是否為本機設定。"
