@@ -21,6 +21,20 @@ public class VolunteerRepository {
                         resultSet.getTimestamp("updated_at").toInstant()
                 );
             };
+    private static final RowMapper<Volunteer.SeatAssignment> SEAT_ASSIGNMENT_ROW_MAPPER =
+            (resultSet, rowNum) -> {
+                // 使用getObject 因為getInt會把null變成0
+                Integer seatRow =
+                        resultSet.getObject("seat_row", Integer.class);
+
+                Integer seatCol =
+                        resultSet.getObject("seat_col", Integer.class);
+
+                return new Volunteer.SeatAssignment(
+                        SeatPeriod.valueOf(resultSet.getString("period")),
+                        new Volunteer.Seat(seatRow, seatCol)
+                );
+            };
 
     public VolunteerRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -118,6 +132,7 @@ public class VolunteerRepository {
     }
 
     private void loadSeats(Volunteer volunteer) {
+        // 依照學生ID 從座位表數據表 取出對應的學期/座位x/座位y
         String sql = """
             SELECT period, seat_row, seat_col
             FROM volunteer_seat
@@ -125,20 +140,10 @@ public class VolunteerRepository {
             ORDER BY period
             """;
 
-        jdbcTemplate.query(sql, resultSet -> {
-            Integer seatRow = // 使用getObject 因為getInt會把null變成0
-                    resultSet.getObject("seat_row", Integer.class);
+        List<Volunteer.SeatAssignment> seats =
+            jdbcTemplate.query(sql, SEAT_ASSIGNMENT_ROW_MAPPER, volunteer.getId());
 
-            Integer seatCol =
-                    resultSet.getObject("seat_col", Integer.class);
-
-            volunteer.addSeat(
-                    new Volunteer.SeatAssignment(
-                            SeatPeriod.valueOf(resultSet.getString("period")),
-                            new Volunteer.Seat(seatRow, seatCol)
-                    )
-            );
-        }, volunteer.getId());
+        seats.forEach(volunteer::addSeat);
     }
 
     public int deleteById(Integer id) {

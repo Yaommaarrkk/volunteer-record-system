@@ -32,11 +32,11 @@ import com.example.backend.util.ApiResponse;
         "http://localhost:3000",
         "https://volunteer-record-system-frontend.onrender.com"
 })
-public class UserController {
+public class VolunteerController {
 
     private final VolunteerRepository volunteerRepository;
 
-    public UserController(VolunteerRepository volunteerRepository) {
+    public VolunteerController(VolunteerRepository volunteerRepository) {
         this.volunteerRepository = volunteerRepository;
     }
 

@@ -48,14 +48,17 @@ public class ActivityRepository {
 
     public int insert(String name, ActivityType defaultType) {
         String sql = """
+            -- INSERT一筆資料 填入name、default_type、sort_order這三個欄位
             INSERT INTO activity (name, default_type, sort_order)
             VALUES (
                 ?,
                 ?,
+                -- 把目前該類最大的sort_order拿出來+1
                 (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM activity WHERE default_type = ?)
             )
             """;
 
+        // 第一個參數是SQL，第二個以後是SQL內用到的變數(也就是?處)，回傳值為修改的資料筆數
         return jdbcTemplate.update(
                 sql,
                 name,
@@ -64,6 +67,7 @@ public class ActivityRepository {
         );
     }
 
+    // 全成功或全失敗
     @Transactional
     public int deleteById(Integer id) {
         ActivityType defaultType = findTypeById(id);
@@ -102,6 +106,7 @@ public class ActivityRepository {
             return 1;
         }
 
+        // 在要去的群組加入這項
         String sql = """
             UPDATE activity
             SET
@@ -120,7 +125,7 @@ public class ActivityRepository {
                 defaultType.name(),
                 id
         );
-        normalizeOrder(oldType);
+        normalizeOrder(oldType); // 舊群組更新order
         return updatedRows;
     }
 
@@ -133,18 +138,22 @@ public class ActivityRepository {
             ORDER BY sort_order, id
             """;
 
+        // queryForList 查詢資料 回傳值為id的List
         List<Integer> currentIds = jdbcTemplate.queryForList(
                 selectSql,
-                Integer.class,
+                Integer.class, // 對應SQL的integer
                 defaultType.name()
         );
 
+        // 檢查前端傳入的和資料庫的是否相符
+        // 檢查是否空、是否大小相同、元素是否相同(使用HashSet不在意排序)
         if (orderedIds == null
                 || currentIds.size() != orderedIds.size()
                 || !new HashSet<>(currentIds).equals(new HashSet<>(orderedIds))) {
             return false;
         }
 
+        // 修改單一項的sort_order
         String updateSql = """
             UPDATE activity
             SET sort_order = ?
@@ -155,7 +164,7 @@ public class ActivityRepository {
             jdbcTemplate.update(
                     updateSql,
                     index + 1,
-                    orderedIds.get(index),
+                    orderedIds.get(index), // 找requestBody的第i項
                     defaultType.name()
             );
         }

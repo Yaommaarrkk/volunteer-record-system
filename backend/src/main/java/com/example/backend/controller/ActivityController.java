@@ -63,7 +63,7 @@ public class ActivityController {
                 request.defaultType()
         );
 
-        if (insertedRows != 1) {
+        if (insertedRows != 1) { // 修改筆數為1才正確
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.fail("新增活動失敗"));
@@ -76,13 +76,14 @@ public class ActivityController {
 
     @DeleteMapping("/activity/{id}")
     public ResponseEntity<Response<Void>> deleteActivity(@PathVariable Integer id) {
-        if (activityRepository.deleteById(id) == 0) {
+        if (activityRepository.deleteById(id) == 0) { // 0代表表中找不到該ID
             return activityNotFound(id);
         }
 
         return ResponseEntity.ok(ApiResponse.success("刪除活動成功", null));
     }
 
+    // Patch部分修改 Put整筆修改
     @PatchMapping("/activity/{id}/name")
     public ResponseEntity<Response<Void>> updateActivityName(
             @PathVariable Integer id,
@@ -94,6 +95,7 @@ public class ActivityController {
                     .body(ApiResponse.fail("活動名不能為空"));
         }
 
+        // 靠ID找 改name
         if (activityRepository.updateName(id, request.name().trim()) == 0) {
             return activityNotFound(id);
         }

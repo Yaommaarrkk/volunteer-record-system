@@ -12,6 +12,7 @@ public class Volunteer {
     private final List<SeatAssignment> seats = new ArrayList<>();
 
     public static class Seat {
+        // 用Integer才可以存null
         private Integer row;
         private Integer col;
 
