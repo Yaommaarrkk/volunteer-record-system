@@ -15,7 +15,8 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Number as Number
 import Data.String.Common as String
 import Data.String.Pattern (Pattern(..))
-import Domain.Activity (Activity, activityTypeLabel)
+import Data.Tuple (uncurry)
+import Domain.Activity (Activity, activityTypeOptions)
 import Domain.HourRecord (CopiedHourRecord)
 import Domain.Volunteer (Seat, SeatPeriod(..), Volunteer, getGrade, seatForPeriod, seatPeriodToApi)
 import Effect (Effect)
@@ -291,15 +292,10 @@ renderActivityTypeSelect selectedType =
     [ HP.value selectedType
     , HE.onValueChange SetActivityType
     ]
-    [ typeOption "TEACHING"
-    , typeOption "COMPANION_READING"
-    , typeOption "PLAY"
-    , typeOption "DAILY_INTERACTION"
-    , typeOption "PASSIVE"
-    ]
+    (map (uncurry typeOption) activityTypeOptions)
 
-typeOption :: forall m. String -> H.ComponentHTML Action Slots m
-typeOption value = HH.option [ HP.value value ] [ HH.text (activityTypeLabel value) ]
+typeOption :: forall m. String -> String -> H.ComponentHTML Action Slots m
+typeOption value label = HH.option [ HP.value value ] [ HH.text label ]
 
 renderHoursPicker :: forall m. State -> H.ComponentHTML Action Slots m
 renderHoursPicker state =

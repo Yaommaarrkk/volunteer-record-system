@@ -10,7 +10,8 @@ import Prelude
 import Data.Array as Array
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String.Common as String
-import Domain.Activity (Activity, activityTypeLabel)
+import Data.Tuple (uncurry)
+import Domain.Activity (Activity, activityTypeFilterOptions, activityTypeLabel, activityTypeOptions)
 import Domain.Volunteer (formatUpdatedAt)
 import Effect.Class (class MonadEffect)
 import Halogen as H
@@ -142,13 +143,7 @@ render state =
                 [ HP.value (fromMaybe "ALL" state.selectedType)
                 , HE.onValueChange SelectTypeFilter
                 ]
-                [ activityTypeOption "ALL" "全部顯示"
-                , activityTypeOption "TEACHING" "教學"
-                , activityTypeOption "COMPANION_READING" "陪讀"
-                , activityTypeOption "PLAY" "玩樂"
-                , activityTypeOption "DAILY_INTERACTION" "日常互動"
-                , activityTypeOption "PASSIVE" "被動"
-                ]
+                (map (uncurry activityTypeOption) activityTypeFilterOptions)
             ]
         , case state.selectedType of
             Nothing -> HH.text ""
@@ -315,12 +310,7 @@ renderTypeCell state isEditing activity =
               , HP.value state.draftDefaultType
               , HE.onValueChange SetDraftType
               ]
-              [ activityTypeOption "TEACHING" "教學"
-              , activityTypeOption "COMPANION_READING" "陪讀"
-              , activityTypeOption "PLAY" "玩樂"
-              , activityTypeOption "DAILY_INTERACTION" "日常互動"
-              , activityTypeOption "PASSIVE" "被動"
-              ]
+              (map (uncurry activityTypeOption) activityTypeOptions)
           , renderEditActions "預設類型" (SubmitType activity.id)
           ]
       ]

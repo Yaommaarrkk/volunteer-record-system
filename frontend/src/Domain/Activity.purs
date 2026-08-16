@@ -1,12 +1,18 @@
 module Domain.Activity
   ( Activity
   , ActivityType(..)
+  , activityTypeFilterOptions
   , activityTypeFromApi
   , activityTypeLabel
+  , activityTypeOptions
   , activityTypeToApi
   ) where
 
 import Prelude
+
+import Data.Array as Array
+import Data.Maybe (fromMaybe)
+import Data.Tuple (Tuple(..))
 
 data ActivityType
   = Teaching
@@ -16,6 +22,19 @@ data ActivityType
   | Passive
 
 derive instance eqActivityType :: Eq ActivityType
+
+activityTypeOptions :: Array (Tuple String String)
+activityTypeOptions =
+  [ Tuple "TEACHING" "教學"
+  , Tuple "COMPANION_READING" "陪讀"
+  , Tuple "PLAY" "玩樂"
+  , Tuple "DAILY_INTERACTION" "日常互動"
+  , Tuple "PASSIVE" "被動"
+  ]
+
+activityTypeFilterOptions :: Array (Tuple String String)
+activityTypeFilterOptions =
+  Array.cons (Tuple "ALL" "全部顯示") activityTypeOptions
 
 type Activity =
   { id :: Int
@@ -43,10 +62,8 @@ activityTypeFromApi = case _ of
   _ -> Teaching
 
 activityTypeLabel :: String -> String
-activityTypeLabel = case _ of
-  "TEACHING" -> "教學"
-  "COMPANION_READING" -> "陪讀"
-  "PLAY" -> "玩樂"
-  "DAILY_INTERACTION" -> "日常互動"
-  "PASSIVE" -> "被動"
-  _ -> "未知類型"
+activityTypeLabel value =
+  fromMaybe "未知類型"
+    $ map
+        (\(Tuple _ label) -> label)
+        (Array.find (\(Tuple typeCode _) -> typeCode == value) activityTypeOptions)

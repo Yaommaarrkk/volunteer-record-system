@@ -11,6 +11,7 @@ import Data.Array as Array
 import Data.Argonaut.Parser (jsonParser)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
+import Data.String.Common as String
 import Data.Time.Duration (Milliseconds(..))
 import Domain.Activity (Activity)
 import Domain.HourRecord (CopiedHourRecord, HourRecord)
@@ -42,6 +43,7 @@ type State =
   { activities :: Array Activity
   , volunteers :: Array Volunteer
   , records :: Array HourRecord
+  , historyVolunteerIds :: Array Int
   , totalRecords :: Int
   , defaultYear :: Int
   , isLoading :: Boolean
@@ -131,6 +133,7 @@ initialState =
   { activities: []
   , volunteers: []
   , records: []
+  , historyVolunteerIds: []
   , totalRecords: 0
   , defaultYear: 2026
   , isLoading: true
@@ -188,6 +191,8 @@ render state =
         unit
         HourRecordList.component
         { records: state.records
+        , volunteers: state.volunteers
+        , filterVolunteerIds: state.historyVolunteerIds
         , totalRecords: state.totalRecords
         , isLoading: state.isLoading
         , isLoadingMore: state.isLoadingMore
@@ -299,7 +304,7 @@ handleAction = case _ of
             , successfulSubmitVersion = state.successfulSubmitVersion + 1
             }
         showNotice SuccessNotice message
-        recordsResult <- H.liftAff loadRecordOverview
+        recordsResult <- H.liftAff (loadRecordOverview state.historyVolunteerIds)
         handleAction (RecordsLoaded recordsResult)
   HourRecordFormOutput (HourRecordForm.UpdateDefaultYear year) -> do
     state <- H.get
@@ -320,7 +325,8 @@ handleAction = case _ of
         showNotice ErrorNotice message
       Right message -> do
         showNotice SuccessNotice message
-        recordsResult <- H.liftAff loadRecordOverview
+        state <- H.get
+        recordsResult <- H.liftAff (loadRecordOverview state.historyVolunteerIds)
         handleAction (RecordsLoaded recordsResult)
   HourRecordListOutput (HourRecordList.CopyRequested copiedRecord) -> do
     state <- H.get
@@ -330,11 +336,21 @@ handleAction = case _ of
         , copyVersion = state.copyVersion + 1
         }
     showNotice SuccessNotice "已複製到上方輸入區"
+  HourRecordListOutput (HourRecordList.VolunteerFilterChanged volunteerIds) -> do
+    H.modify_ _
+      { historyVolunteerIds = volunteerIds
+      , isLoading = true
+      , isLoadingMore = false
+      , hasMoreRecords = true
+      , loadError = Nothing
+      }
+    result <- H.liftAff (loadRecordOverview volunteerIds)
+    handleAction (RecordsLoaded result)
   HourRecordListOutput HourRecordList.LoadMoreRequested -> do
     state <- H.get
     when (state.hasMoreRecords && not state.isLoadingMore) do
       H.modify_ _ { isLoadingMore = true }
-      result <- H.liftAff (loadHourRecordsPage (Array.length state.records))
+      result <- H.liftAff (loadHourRecordsPage state.historyVolunteerIds (Array.length state.records))
       handleAction (MoreRecordsLoaded result)
   HourRecordListOutput HourRecordList.RetryRequested -> handleAction RetryLoad
   HideNotice version -> do
@@ -370,7 +386,7 @@ loadPageData = do
           case yearResult of
             Left message -> pure (Left message)
             Right defaultYear -> do
-              overviewResult <- loadRecordOverview
+              overviewResult <- loadRecordOverview []
               pure case overviewResult of
                 Left message -> Left message
                 Right overview ->
@@ -412,36 +428,38 @@ loadDefaultYear = do
 hourRecordPageSize :: Int
 hourRecordPageSize = 20
 
-loadHourRecords :: Aff (Either String (Array HourRecord))
-loadHourRecords = loadHourRecordsPage 0
+loadHourRecords :: Array Int -> Aff (Either String (Array HourRecord))
+loadHourRecords volunteerIds = loadHourRecordsPage volunteerIds 0
 
-loadRecordOverview :: Aff (Either String RecordOverview)
-loadRecordOverview = do
-  recordsResult <- loadHourRecords
+loadRecordOverview :: Array Int -> Aff (Either String RecordOverview)
+loadRecordOverview volunteerIds = do
+  recordsResult <- loadHourRecords volunteerIds
   case recordsResult of
     Left message -> pure (Left message)
     Right records -> do
-      countResult <- loadHourRecordCount
+      countResult <- loadHourRecordCount volunteerIds
       pure case countResult of
         Left message -> Left message
         Right totalRecords -> Right { records, totalRecords }
 
-loadHourRecordCount :: Aff (Either String Int)
-loadHourRecordCount = do
-  result <- AX.get ResponseFormat.string (apiUrl "/api/hour-records/count")
+loadHourRecordCount :: Array Int -> Aff (Either String Int)
+loadHourRecordCount volunteerIds = do
+  result <- AX.get ResponseFormat.string (apiUrl ("/api/hour-records/count" <> volunteerFilterQuery volunteerIds))
   pure case result of
     Left error -> Left (AX.printError error)
     Right response -> case readJSON response.body of
       Left errors -> Left ("時數紀錄總筆數格式錯誤：" <> show errors)
       Right (decoded :: HourRecordCountResponse) -> Right decoded.data
 
-loadHourRecordsPage :: Int -> Aff (Either String (Array HourRecord))
-loadHourRecordsPage offset = do
+loadHourRecordsPage :: Array Int -> Int -> Aff (Either String (Array HourRecord))
+loadHourRecordsPage volunteerIds offset = do
   result <-
     AX.get
       ResponseFormat.string
       ( apiUrl
-          ( "/api/hour-records?offset="
+          ( "/api/hour-records?"
+              <> volunteerFilterParameters volunteerIds
+              <> "offset="
               <> show offset
               <> "&limit="
               <> show hourRecordPageSize
@@ -452,6 +470,16 @@ loadHourRecordsPage offset = do
     Right response -> case readJSON response.body of
       Left errors -> Left ("時數紀錄格式錯誤：" <> show errors)
       Right (decoded :: HourRecordsResponse) -> Right decoded.data
+
+volunteerFilterQuery :: Array Int -> String
+volunteerFilterQuery volunteerIds =
+  if Array.null volunteerIds then ""
+  else "?" <> volunteerFilterParameters volunteerIds <> ""
+
+volunteerFilterParameters :: Array Int -> String
+volunteerFilterParameters volunteerIds =
+  if Array.null volunteerIds then ""
+  else String.joinWith "" (map (\id -> "ids=" <> show id <> "&") volunteerIds)
 
 createHourRecord :: HourRecordForm.CreateHourRecordRequest -> Aff (Either String String)
 createHourRecord request =

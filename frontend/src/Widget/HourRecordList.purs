@@ -13,7 +13,7 @@ import Data.Maybe (Maybe(..))
 import Data.String.Common as String
 import Domain.Activity (activityTypeLabel)
 import Domain.HourRecord (CopiedHourRecord, HourRecord)
-import Domain.Volunteer (formatUpdatedAt)
+import Domain.Volunteer (Seat, SeatPeriod(..), Volunteer, getGrade, seatForPeriod, seatPeriodToApi, formatUpdatedAt)
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import Halogen as H
@@ -32,6 +32,8 @@ type Slots = ()
 
 type Input =
   { records :: Array HourRecord
+  , volunteers :: Array Volunteer
+  , filterVolunteerIds :: Array Int
   , totalRecords :: Int
   , isLoading :: Boolean
   , isLoadingMore :: Boolean
@@ -41,6 +43,12 @@ type Input =
 
 type State =
   { records :: Array HourRecord
+  , volunteers :: Array Volunteer
+  , filterVolunteerIds :: Array Int
+  , draftFilterVolunteerIds :: Array Int
+  , filterSeatPeriod :: SeatPeriod
+  , isVolunteerFilterOpen :: Boolean
+  , isFilterOtherStudentsOpen :: Boolean
   , totalRecords :: Int
   , isLoading :: Boolean
   , isLoadingMore :: Boolean
@@ -62,6 +70,12 @@ data Action
   | AskDelete
   | CancelDelete
   | ConfirmDelete
+  | ToggleVolunteerFilter
+  | ToggleFilterVolunteer Int
+  | ToggleFilterOtherStudents
+  | SelectFilterSeatPeriod String
+  | ApplyVolunteerFilter
+  | ClearVolunteerFilter
   | Retry
 
 data Output
@@ -69,6 +83,7 @@ data Output
   | CopyRequested CopiedHourRecord
   | LoadMoreRequested
   | RetryRequested
+  | VolunteerFilterChanged (Array Int)
 
 foreign import subscribeWindowScroll
   :: (Unit -> Effect Unit)
@@ -81,6 +96,12 @@ component =
   H.mkComponent
     { initialState: \input ->
         { records: input.records
+        , volunteers: input.volunteers
+        , filterVolunteerIds: input.filterVolunteerIds
+        , draftFilterVolunteerIds: input.filterVolunteerIds
+        , filterSeatPeriod: Year114SecondSemester
+        , isVolunteerFilterOpen: false
+        , isFilterOtherStudentsOpen: false
         , totalRecords: input.totalRecords
         , isLoading: input.isLoading
         , isLoadingMore: input.isLoadingMore
@@ -111,6 +132,7 @@ render state =
         [ HH.div_
             [ HH.h2_ [ HH.text "登錄歷史" ]
             , HH.p_ [ HH.text "點左側方框可多選；Ctrl 跳選；Shift 連續選取" ]
+            , renderVolunteerFilter state
             ]
         , HH.div
             [ HP.class_ (HH.ClassName "hour-record-list-actions") ]
@@ -302,6 +324,8 @@ handleAction = case _ of
       \state ->
         state
         { records = input.records
+        , volunteers = input.volunteers
+        , filterVolunteerIds = input.filterVolunteerIds
         , totalRecords = input.totalRecords
         , isLoading = input.isLoading
         , isLoadingMore = input.isLoadingMore
@@ -311,6 +335,9 @@ handleAction = case _ of
             Array.filter
               (\id -> Array.any (\record -> record.id == id) input.records)
               state.selectedIds
+        , draftFilterVolunteerIds =
+            if state.isVolunteerFilterOpen then state.draftFilterVolunteerIds
+            else input.filterVolunteerIds
         }
   ViewportChanged -> do
     state <- H.get
@@ -392,4 +419,136 @@ handleAction = case _ of
     H.modify_ _ { isDeleteDialogOpen = false }
     if Array.null state.selectedIds then pure unit
     else H.raise (DeleteRequested state.selectedIds)
+  ToggleVolunteerFilter ->
+    H.modify_ \state ->
+      if state.isVolunteerFilterOpen then
+        state { isVolunteerFilterOpen = false, isFilterOtherStudentsOpen = false }
+      else
+        state
+          { isVolunteerFilterOpen = true
+          , isFilterOtherStudentsOpen = false
+          , draftFilterVolunteerIds = state.filterVolunteerIds
+          }
+  ToggleFilterVolunteer id ->
+    H.modify_ \state ->
+      state
+        { draftFilterVolunteerIds = toggleId id state.draftFilterVolunteerIds }
+  ToggleFilterOtherStudents ->
+    H.modify_ \state -> state { isFilterOtherStudentsOpen = not state.isFilterOtherStudentsOpen }
+  SelectFilterSeatPeriod value ->
+    H.modify_ _ { filterSeatPeriod = seatPeriodFromApi value, isFilterOtherStudentsOpen = false }
+  ApplyVolunteerFilter -> do
+    state <- H.get
+    H.modify_ _
+      { filterVolunteerIds = state.draftFilterVolunteerIds
+      , isVolunteerFilterOpen = false
+      , isFilterOtherStudentsOpen = false
+      }
+    H.raise (VolunteerFilterChanged state.draftFilterVolunteerIds)
+  ClearVolunteerFilter -> do
+    H.modify_ _ { draftFilterVolunteerIds = [], filterVolunteerIds = [] }
+    H.raise (VolunteerFilterChanged [])
   Retry -> H.raise RetryRequested
+
+renderVolunteerFilter :: forall m. State -> H.ComponentHTML Action Slots m
+renderVolunteerFilter state =
+  let
+    selectedNames =
+      state.volunteers
+        # Array.filter (\volunteer -> Array.elem volunteer.id state.filterVolunteerIds)
+        # map volunteerWithGrade
+        # String.joinWith ", "
+    volunteersWithoutSeat =
+      state.volunteers
+        # Array.filter (\volunteer -> seatForPeriod state.filterSeatPeriod volunteer == Nothing)
+  in
+    HH.div
+      [ HP.classes
+          ( [ HH.ClassName "hour-record-filter" ]
+              <> if state.isVolunteerFilterOpen then [ HH.ClassName "seat-picker-open" ] else []
+          )
+      ]
+      [ HH.button
+          [ HP.class_ (HH.ClassName "seat-picker-trigger")
+          , HE.onClick \_ -> ToggleVolunteerFilter
+          ]
+          [ HH.text (if Array.null state.filterVolunteerIds then "篩選學生（全部）" else selectedNames) ]
+      , if state.isVolunteerFilterOpen then
+          HH.div
+            [ HP.class_ (HH.ClassName "seat-picker hour-record-filter-picker") ]
+            [ HH.label
+                [ HP.class_ (HH.ClassName "seat-period-select") ]
+                [ HH.span_ [ HH.text "選學期" ]
+                , HH.select
+                    [ HP.value (seatPeriodToApi state.filterSeatPeriod)
+                    , HE.onValueChange SelectFilterSeatPeriod
+                    ]
+                    [ HH.option [ HP.value "YEAR_114_SECOND_SEMESTER" ] [ HH.text "114下" ]
+                    , HH.option [ HP.value "YEAR_115_SUMMER" ] [ HH.text "115暑假" ]
+                    ]
+                ]
+            , HH.div
+                [ HP.class_ (HH.ClassName "participant-seat-stage") ]
+                [ HH.div
+                    [ HP.class_ (HH.ClassName "participant-unseated-dropdown") ]
+                    [ HH.button
+                        [ HP.class_ (HH.ClassName "participant-unseated-trigger")
+                        , HE.onClick \_ -> ToggleFilterOtherStudents
+                        ]
+                        [ HH.span_ [ HH.text "其他學生" ]
+                        , HH.span_ [ HH.text if state.isFilterOtherStudentsOpen then "▴" else "▾" ]
+                        ]
+                    , if state.isFilterOtherStudentsOpen then
+                        HH.div [ HP.class_ (HH.ClassName "participant-unseated-menu") ]
+                          (if Array.null volunteersWithoutSeat then [ HH.p_ [ HH.text "沒有其他學生" ] ] else map (renderFilterVolunteerOption state.draftFilterVolunteerIds) volunteersWithoutSeat)
+                      else HH.text ""
+                    ]
+                , HH.span [ HP.class_ (HH.ClassName "seat-stage-button") ] [ HH.text "講台" ]
+                , HH.div
+                    [ HP.class_ (HH.ClassName "participant-seat-actions") ]
+                    [ HH.button [ HP.class_ (HH.ClassName "seat-confirm-button"), HE.onClick \_ -> ApplyVolunteerFilter ] [ HH.text "套用" ]
+                    , HH.button [ HP.class_ (HH.ClassName "seat-clear-button"), HE.onClick \_ -> ClearVolunteerFilter ] [ HH.text "清除" ]
+                    ]
+                ]
+            , HH.div [ HP.class_ (HH.ClassName "seat-grid participant-seat-grid") ] (map (renderFilterSeat state) seats)
+            ]
+        else HH.text ""
+      ]
+
+renderFilterVolunteerOption :: forall m. Array Int -> Volunteer -> H.ComponentHTML Action Slots m
+renderFilterVolunteerOption selectedIds volunteer =
+  HH.button
+    [ HP.classes ([ HH.ClassName "participant-unseated-option" ] <> if Array.elem volunteer.id selectedIds then [ HH.ClassName "participant-unseated-option-selected" ] else [])
+    , HE.onClick \_ -> ToggleFilterVolunteer volunteer.id
+    ]
+    [ HH.text (volunteerWithGrade volunteer) ]
+
+renderFilterSeat :: forall m. State -> Seat -> H.ComponentHTML Action Slots m
+renderFilterSeat state seat = case volunteerAtSeat state.filterSeatPeriod seat state.volunteers of
+  Nothing -> HH.button [ HP.classes [ HH.ClassName "seat-button", HH.ClassName "participant-seat-empty" ], HP.disabled true ] [ HH.text (show seat.row <> "-" <> show seat.col) ]
+  Just volunteer ->
+    HH.button
+      [ HP.classes ([ HH.ClassName "seat-button", HH.ClassName "participant-seat-button" ] <> if Array.elem volunteer.id state.draftFilterVolunteerIds then [ HH.ClassName "participant-seat-selected" ] else [])
+      , HE.onClick \_ -> ToggleFilterVolunteer volunteer.id
+      ]
+      [ HH.strong_ [ HH.text (volunteerWithGrade volunteer) ] ]
+
+toggleId :: Int -> Array Int -> Array Int
+toggleId id ids = if Array.elem id ids then Array.filter (_ /= id) ids else Array.snoc ids id
+
+volunteerWithGrade :: Volunteer -> String
+volunteerWithGrade volunteer = volunteer.name <> "(" <> show (getGrade volunteer) <> ")"
+
+seatPeriodFromApi :: String -> SeatPeriod
+seatPeriodFromApi = case _ of
+  "YEAR_115_SUMMER" -> Year115Summer
+  _ -> Year114SecondSemester
+
+seats :: Array Seat
+seats = do
+  row <- Array.range 1 5
+  col <- Array.range 1 4
+  pure { row, col }
+
+volunteerAtSeat :: SeatPeriod -> Seat -> Array Volunteer -> Maybe Volunteer
+volunteerAtSeat period seat = Array.find (\volunteer -> seatForPeriod period volunteer == Just seat)

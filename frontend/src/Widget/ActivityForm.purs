@@ -9,7 +9,8 @@ import Prelude
 
 import Data.Maybe (Maybe(..))
 import Data.String.Common as String
-import Domain.Activity (ActivityType(..), activityTypeFromApi, activityTypeToApi)
+import Data.Tuple (uncurry)
+import Domain.Activity (ActivityType(..), activityTypeFromApi, activityTypeOptions, activityTypeToApi)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -94,12 +95,7 @@ render state =
                 [ HP.value (activityTypeToApi state.defaultType)
                 , HE.onValueChange SetDefaultType
                 ]
-                [ activityTypeOption "TEACHING" "教學"
-                , activityTypeOption "COMPANION_READING" "陪讀"
-                , activityTypeOption "PLAY" "玩樂"
-                , activityTypeOption "DAILY_INTERACTION" "日常互動"
-                , activityTypeOption "PASSIVE" "被動"
-                ]
+                (map (uncurry activityTypeOption) activityTypeOptions)
             )
         , HH.button
             [ HP.class_ (HH.ClassName "student-submit")

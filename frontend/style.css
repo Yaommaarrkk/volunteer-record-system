@@ -511,6 +511,13 @@ body:has(.daily-activity-page) {
   visibility: visible;
 }
 
+.hour-record-filter.seat-picker-open .seat-picker {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  visibility: visible;
+}
+
 .seat-picker p {
   margin: 0 0 12px;
   color: #64746f;
@@ -2197,6 +2204,78 @@ body:has(.daily-activity-page) {
 
 .hour-record-participant-field.seat-picker-open {
   z-index: 5;
+}
+
+.hour-record-filter {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 10px;
+}
+
+.hour-record-filter.seat-picker-open {
+  z-index: 5;
+}
+
+.hour-record-filter .seat-picker-trigger {
+  width: auto;
+  max-width: 240px;
+  min-height: 36px;
+  padding: 6px 10px;
+  overflow: hidden;
+  color: #17352f;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hour-record-filter-picker {
+  top: calc(100% + 8px);
+  right: auto;
+  left: 0;
+  width: 320px;
+}
+
+.hour-record-filter-picker .participant-seat-stage {
+  grid-template-columns: 102px 1fr 88px;
+  gap: 6px;
+}
+
+.hour-record-filter-picker .participant-unseated-dropdown {
+  width: 102px;
+}
+
+.hour-record-filter-picker .participant-unseated-trigger,
+.hour-record-filter-picker .participant-unseated-option {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hour-record-filter-picker .participant-unseated-trigger {
+  min-height: 42px;
+  padding: 5px 7px;
+}
+
+.hour-record-filter-picker .participant-unseated-option {
+  min-height: 36px;
+  padding: 6px 9px;
+}
+
+.hour-record-filter-picker .participant-seat-actions {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.hour-record-filter-picker .seat-confirm-button,
+.hour-record-filter-picker .seat-clear-button {
+  width: 100%;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
 }
 
 .hour-record-seat-picker {
