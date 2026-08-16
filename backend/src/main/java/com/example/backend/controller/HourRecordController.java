@@ -117,6 +117,7 @@ public class HourRecordController {
     @GetMapping("/hour-records")
     // 登錄歷史的抓取資料 從第offset開始向資料庫抓取limit筆紀錄
     public ResponseEntity<Response<List<HourRecord>>> getHourRecords(
+            @RequestParam(required = false) List<Integer> ids,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "20") int limit
     ) {
@@ -126,15 +127,29 @@ public class HourRecordController {
                     .body(ApiResponse.fail("offset 必須大於等於 0，limit 必須介於 1 到 100"));
         }
 
-        return ResponseEntity.ok(
-                ApiResponse.success(hourRecordRepository.getPage(offset, limit))
-        );
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.ok(
+                    ApiResponse.success(hourRecordRepository.getPage(offset, limit))
+            );
+        } else {
+            return ResponseEntity.ok(
+                    ApiResponse.success(hourRecordRepository.getPageByVolunteerIds(ids.stream().distinct().toList(), offset, limit))
+            );
+        }
     }
 
     @GetMapping("/hour-records/count")
     // 總筆數 用於[120/471筆紀錄]
-    public ResponseEntity<Response<Long>> getHourRecordCount() {
-        return ResponseEntity.ok(ApiResponse.success(hourRecordRepository.getCount()));
+    public ResponseEntity<Response<Long>> getHourRecordCount(
+            @RequestParam(required = false) List<Integer> ids
+    ) {
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(hourRecordRepository.getCount()));
+        }
+
+        return ResponseEntity.ok(
+                ApiResponse.success(hourRecordRepository.getCountByVolunteerIds(ids.stream().distinct().toList()))
+        );
     }
 
     @GetMapping("/hour-records/export")

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Collections;
 
 @Repository
 public class HourRecordRepository {
@@ -87,6 +88,42 @@ public class HourRecordRepository {
         return jdbcTemplate.query(sql, HOUR_RECORD_ROW_MAPPER, limit, offset);
     }
 
+    public List<HourRecord> getPageByVolunteerIds(List<Integer> ids, int offset, int limit) {
+        String placeholders = String.join(", ", Collections.nCopies(ids.size(), "?"));
+        String sql = """
+            SELECT
+                hour_record.id,
+                hour_record.activity_id,
+                activity.name AS activity_name,
+                hour_record.activity_type,
+                activity_type_color.tag_color,
+                hour_record.activity_date,
+                hour_record.volunteer_id,
+                volunteer.name AS volunteer_name,
+                hour_record.hours,
+                hour_record.note,
+                hour_record.created_at
+            FROM hour_record
+            JOIN activity ON activity.id = hour_record.activity_id
+            JOIN activity_type_color
+              ON activity_type_color.default_type = hour_record.activity_type
+            JOIN volunteer ON volunteer.id = hour_record.volunteer_id
+            WHERE hour_record.volunteer_id IN (%s)
+            ORDER BY hour_record.created_at DESC, hour_record.id DESC
+            LIMIT ?
+            OFFSET ?
+            """.formatted(placeholders);
+
+        Object[] parameters = new Object[ids.size() + 2];
+        for (int index = 0; index < ids.size(); index++) {
+            parameters[index] = ids.get(index);
+        }
+        parameters[ids.size()] = limit;
+        parameters[ids.size() + 1] = offset;
+
+        return jdbcTemplate.query(sql, HOUR_RECORD_ROW_MAPPER, parameters);
+    }
+
     public long getCount() {
         String sql = """
             SELECT COUNT(*)
@@ -94,6 +131,18 @@ public class HourRecordRepository {
             """;
 
         Long count = jdbcTemplate.queryForObject(sql, Long.class);
+        return count == null ? 0L : count;
+    }
+
+    public long getCountByVolunteerIds(List<Integer> ids) {
+        String placeholders = String.join(", ", Collections.nCopies(ids.size(), "?"));
+        String sql = """
+            SELECT COUNT(*)
+            FROM hour_record
+            WHERE volunteer_id IN (%s)
+            """.formatted(placeholders);
+
+        Long count = jdbcTemplate.queryForObject(sql, Long.class, ids.toArray());
         return count == null ? 0L : count;
     }
 
