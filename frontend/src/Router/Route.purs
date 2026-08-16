@@ -21,7 +21,7 @@ import Routing.Hash (matches)
 
 data Route
   = Home
-  | MasterData MasterDataType
+  | MasterData MasterDataType -- 含新增學生和新增活動這兩個頁面
   | Records
   | Summary
   | DailyActivity
