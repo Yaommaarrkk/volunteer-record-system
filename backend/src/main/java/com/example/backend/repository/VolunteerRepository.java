@@ -82,6 +82,8 @@ public class VolunteerRepository {
     }
 
     public Integer nextId(EducationLevel educationLevel) {
+        // elementary_volunteer_id_seq 和 junior_high_volunteer_id_seq 是 sequence
+        // 製作流水號 小學的1000開始 國中的2000開始
         String sql = switch (educationLevel) {
             case ELEMENTARY_SCHOOL ->
                     "SELECT nextval('elementary_volunteer_id_seq')";
@@ -90,6 +92,8 @@ public class VolunteerRepository {
             default -> throw new IllegalArgumentException("目前只支援國小與國中");
         };
 
+        // queryForObject 只能有 1 row
+        // 而 sequence 只有一個值
         Long id = jdbcTemplate.queryForObject(sql, Long.class);
         if (id == null) {
             throw new IllegalStateException("無法取得學生流水號");

@@ -115,11 +115,12 @@ public class HourRecordController {
     }
 
     @GetMapping("/hour-records")
+    // 登錄歷史的抓取資料 從第offset開始向資料庫抓取limit筆紀錄
     public ResponseEntity<Response<List<HourRecord>>> getHourRecords(
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "20") int limit
     ) {
-        if (offset < 0 || limit < 1 || limit > 100) {
+        if (offset < 0 || limit < 1 || limit > 200) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.fail("offset 必須大於等於 0，limit 必須介於 1 到 100"));
@@ -131,16 +132,18 @@ public class HourRecordController {
     }
 
     @GetMapping("/hour-records/count")
+    // 總筆數 用於[120/471筆紀錄]
     public ResponseEntity<Response<Long>> getHourRecordCount() {
         return ResponseEntity.ok(ApiResponse.success(hourRecordRepository.getCount()));
     }
 
     @GetMapping("/hour-records/export")
-    public ResponseEntity<byte[]> exportHourRecords() {
-        byte[] workbook = databaseExcelBackupExporter.export(
-                databaseBackupRepository.getBackupSheets()
+    // 總資料庫做成excel並下載
+    public ResponseEntity<byte[]> exportHourRecords() { // 回傳二進制資料
+        byte[] workbook = databaseExcelBackupExporter.export( // 轉成excel
+                databaseBackupRepository.getBackupSheets() // 讀資料庫 內含多個SQL
         );
-        String filename = "volunteer_record_backup_" + LocalDate.now() + ".xlsx";
+        String filename = "volunteer_record_backup_" + LocalDate.now() + ".xlsx"; // 下載檔名
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(
@@ -164,7 +167,7 @@ public class HourRecordController {
                     .body(ApiResponse.fail("請先選擇要刪除的時數紀錄"));
         }
 
-        List<Integer> ids = request.ids().stream().distinct().toList();
+        List<Integer> ids = request.ids().stream().distinct().toList(); // 去重
         int deletedRows = hourRecordRepository.deleteByIds(ids);
         if (deletedRows < 0) {
             return ResponseEntity

@@ -88,7 +88,7 @@ public class VolunteerController {
             }
 
             int insertedRows = volunteerRepository.insert(volunteer);
-            if (insertedRows != 1) {
+            if (insertedRows != 1) { // 新增一位學生所以應回傳1
                 return ResponseEntity
                         .status(HttpStatus.INTERNAL_SERVER_ERROR)
                         .body(ApiResponse.fail("新增學生失敗"));

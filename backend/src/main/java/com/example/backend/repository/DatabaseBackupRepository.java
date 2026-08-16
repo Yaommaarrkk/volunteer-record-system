@@ -42,13 +42,15 @@ public class DatabaseBackupRepository {
 
     private DatabaseBackupSheet queryTable(String tableName, String sql) {
         return jdbcTemplate.query(sql, resultSet -> {
-            ResultSetMetaData metadata = resultSet.getMetaData();
-            int columnCount = metadata.getColumnCount();
+            ResultSetMetaData metadata = resultSet.getMetaData(); // 拿到欄名們
+            int columnCount = metadata.getColumnCount(); // 拿到欄數
             List<String> columns = new ArrayList<>(columnCount);
+            // 欄名們存進陣列
             for (int column = 1; column <= columnCount; column++) {
                 columns.add(metadata.getColumnLabel(column));
             }
 
+            // 開始存資料
             List<List<Object>> rows = new ArrayList<>();
             while (resultSet.next()) {
                 List<Object> row = new ArrayList<>(columnCount);
@@ -58,6 +60,7 @@ public class DatabaseBackupRepository {
                 rows.add(row);
             }
 
+            // 最後把表名、欄名們，資料，包起來回傳
             return new DatabaseBackupSheet(tableName, columns, rows);
         });
     }
