@@ -6,7 +6,6 @@ module Widget.VolunteerHourSummary
   ) where
 
 import Prelude
-
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.Web as AX
 import Config.Api (apiUrl)
@@ -30,40 +29,42 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Simple.JSON (readJSON)
 
-type Slot id = forall query. H.Slot query Output id
+type Slot id
+  = forall query. H.Slot query Output id
 
 type Slots :: Row Type
-type Slots = ()
+type Slots
+  = ()
 
-type Input =
-  { summaries :: Array VolunteerHourSummary
-  , isLoading :: Boolean
-  , loadError :: Maybe String
-  }
+type Input
+  = { summaries :: Array VolunteerHourSummary
+    , isLoading :: Boolean
+    , loadError :: Maybe String
+    }
 
-type State =
-  { summaries :: Array VolunteerHourSummary
-  , isLoading :: Boolean
-  , loadError :: Maybe String
-  , selectedSummary :: Maybe VolunteerHourSummary
-  , detail :: Maybe VolunteerHourDetail
-  , isDetailLoading :: Boolean
-  , detailError :: Maybe String
-  , copyStatus :: Maybe Boolean
-  }
+type State
+  = { summaries :: Array VolunteerHourSummary -- 原始資料表
+    , isLoading :: Boolean
+    , loadError :: Maybe String
+    , selectedSummary :: Maybe VolunteerHourSummary
+    , detail :: Maybe VolunteerHourDetail
+    , isDetailLoading :: Boolean
+    , detailError :: Maybe String
+    , copyStatus :: Maybe Boolean
+    }
 
-type RankedSummary =
-  { summary :: VolunteerHourSummary
-  , teachingPr :: Int
-  , interactionPr :: Int
-  , combinedPr :: Int
-  }
+type RankedSummary  -- 原始個人數據 + PR值相關
+  = { summary :: VolunteerHourSummary
+    , teachingPr :: Int
+    , interactionPr :: Int
+    , combinedPr :: Int
+    }
 
-type VolunteerDetailResponse =
-  { success :: Boolean
-  , message :: String
-  , data :: VolunteerHourDetail
-  }
+type VolunteerDetailResponse
+  = { success :: Boolean
+    , message :: String
+    , data :: VolunteerHourDetail
+    }
 
 data Action
   = Receive Input
@@ -104,73 +105,73 @@ initialState input =
 
 render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
-  let rankedSummaries = rankSummaries state.summaries
+  let
+    rankedSummaries = rankSummaries state.summaries
   in
-  HH.section
-    [ HP.class_ (HH.ClassName "summary-card") ]
-    ( [ HH.div
-          [ HP.class_ (HH.ClassName "list-heading") ]
-          [ HH.div_
-              [ HH.h2_ [ HH.text "學生時數比較" ]
-              , HH.p_ [ HH.text "依教學 PR 與互動 PR 的合計由高到低排序；點學生可查看明細。" ]
-              ]
-          , HH.div
-              [ HP.class_ (HH.ClassName "summary-heading-actions") ]
-              ( (case state.copyStatus of
-                    Nothing -> []
-                    Just true ->
-                      [ HH.span
-                          [ HP.class_ (HH.ClassName "summary-copy-status summary-copy-success") ]
-                          [ HH.text "已複製" ]
-                      ]
-                    Just false ->
-                      [ HH.span
-                          [ HP.class_ (HH.ClassName "summary-copy-status summary-copy-error") ]
-                          [ HH.text "複製失敗" ]
+    HH.section
+      [ HP.class_ (HH.ClassName "summary-card") ]
+      ( [ HH.div
+            [ HP.class_ (HH.ClassName "list-heading") ]
+            [ HH.div_
+                [ HH.h2_ [ HH.text "學生時數比較" ]
+                , HH.p_ [ HH.text "依教學 PR 與互動 PR 的合計由高到低排序；點學生可查看明細。" ]
+                ]
+            , HH.div
+                [ HP.class_ (HH.ClassName "summary-heading-actions") ]
+                ( ( case state.copyStatus of
+                      Nothing -> []
+                      Just true ->
+                        [ HH.span
+                            [ HP.class_ (HH.ClassName "summary-copy-status summary-copy-success") ]
+                            [ HH.text "已複製" ]
+                        ]
+                      Just false ->
+                        [ HH.span
+                            [ HP.class_ (HH.ClassName "summary-copy-status summary-copy-error") ]
+                            [ HH.text "複製失敗" ]
+                        ]
+                  )
+                    <> [ HH.button
+                          [ HP.class_ (HH.ClassName "summary-copy-button")
+                          , HP.disabled (state.isLoading || Array.null state.summaries)
+                          , HE.onClick \_ -> CopyTable
+                          ]
+                          [ HH.text "複製表格" ]
+                      , HH.span
+                          [ HP.class_ (HH.ClassName "student-count") ]
+                          [ HH.text (show (Array.length state.summaries) <> " 位學生") ]
                       ]
                 )
-                  <> [ HH.button
-                        [ HP.class_ (HH.ClassName "summary-copy-button")
-                        , HP.disabled (state.isLoading || Array.null state.summaries)
-                        , HE.onClick \_ -> CopyTable
-                        ]
-                        [ HH.text "複製表格" ]
-                    , HH.span
-                        [ HP.class_ (HH.ClassName "student-count") ]
-                        [ HH.text (show (Array.length state.summaries) <> " 位學生") ]
-                    ]
-              )
-          ]
-      , renderContent state rankedSummaries
-      ]
-        <> case state.selectedSummary of
-            Nothing -> []
-            Just summary -> [ renderDetailModal state summary ]
-    )
-
-renderContent
-  :: forall m
-   . State
-  -> Array RankedSummary
-  -> H.ComponentHTML Action Slots m
-renderContent state rankedSummaries
-  | state.isLoading =
-      HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "正在讀取統計資料……" ]
-  | Just message <- state.loadError =
-      HH.div
-        [ HP.class_ (HH.ClassName "list-status list-error") ]
-        [ HH.p_ [ HH.text message ]
-        , HH.button
-            [ HP.class_ (HH.ClassName "list-retry-button")
-            , HE.onClick \_ -> Retry
             ]
-            [ HH.text "重新請求" ]
+        , renderContent state rankedSummaries
         ]
-  | Array.null rankedSummaries =
-      HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "目前沒有學生資料。" ]
+          <> case state.selectedSummary of
+              Nothing -> []
+              Just summary -> [ renderDetailModal state summary ]
+      )
+
+renderContent ::
+  forall m.
+  State ->
+  Array RankedSummary ->
+  H.ComponentHTML Action Slots m
+renderContent state rankedSummaries
+  | state.isLoading = HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "正在讀取統計資料……" ]
+  | Just message <- state.loadError =
+    HH.div
+      [ HP.class_ (HH.ClassName "list-status list-error") ]
+      [ HH.p_ [ HH.text message ]
+      , HH.button
+          [ HP.class_ (HH.ClassName "list-retry-button")
+          , HE.onClick \_ -> Retry
+          ]
+          [ HH.text "重新請求" ]
+      ]
+  | Array.null rankedSummaries = HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "目前沒有學生資料。" ]
   | otherwise =
-      let averageInteraction = classInteractionPercentage state.summaries
-      in
+    let
+      averageInteraction = classInteractionPercentage state.summaries
+    in
       HH.div_
         [ renderClassAverage state.summaries
         , HH.div
@@ -183,6 +184,7 @@ renderContent state rankedSummaries
                         , explainedHeader
                             "教學／互動"
                             "同一個圓餅呈現教學與互動的比例；圓心顯示兩項時數在全班的 PR。"
+                        , HH.th_ [ HH.text "原始數據" ]
                         , explainedHeader
                             "其他"
                             "品德教育與被動時數的合計，不參與圓餅比例與 PR 排序。"
@@ -193,10 +195,10 @@ renderContent state rankedSummaries
             ]
         ]
 
-renderClassAverage
-  :: forall m
-   . Array VolunteerHourSummary
-  -> H.ComponentHTML Action Slots m
+renderClassAverage ::
+  forall m.
+  Array VolunteerHourSummary ->
+  H.ComponentHTML Action Slots m
 renderClassAverage summaries =
   let
     totals =
@@ -209,15 +211,15 @@ renderClassAverage summaries =
         { teaching: 0.0, interaction: 0.0 }
         summaries
   in
-  HH.div
-    [ HP.class_ (HH.ClassName "summary-class-average") ]
-    [ HH.div_
-        [ HH.h3_ [ HH.text "全班平均比例" ]
-        , HH.p_ [ HH.text "以全班教學與互動的總時數計算。" ]
-        ]
-    , renderRatioPie "summary-pie-large" totals.teaching totals.interaction
-    , renderRatioLegend totals.teaching totals.interaction
-    ]
+    HH.div
+      [ HP.class_ (HH.ClassName "summary-class-average") ]
+      [ HH.div_
+          [ HH.h3_ [ HH.text "全班平均比例" ]
+          , HH.p_ [ HH.text "以全班教學與互動的總時數計算。" ]
+          ]
+      , renderRatioPie "summary-pie-large" totals.teaching totals.interaction
+      , renderRatioLegend totals.teaching totals.interaction
+      ]
 
 classInteractionPercentage :: Array VolunteerHourSummary -> Int
 classInteractionPercentage summaries =
@@ -232,7 +234,7 @@ classInteractionPercentage summaries =
         { teaching: 0.0, interaction: 0.0 }
         summaries
   in
-  (ratioPercentages totals.teaching totals.interaction).interaction
+    (ratioPercentages totals.teaching totals.interaction).interaction
 
 explainedHeader :: forall m. String -> String -> H.ComponentHTML Action Slots m
 explainedHeader label explanation =
@@ -244,161 +246,183 @@ explainedHeader label explanation =
     , HH.span [ HP.class_ (HH.ClassName "summary-help-icon") ] [ HH.text "?" ]
     ]
 
-rankSummaries :: Array VolunteerHourSummary -> Array RankedSummary
+rankSummaries :: Array VolunteerHourSummary -> Array RankedSummary -- 原始資料表轉含PR且排序的表
 rankSummaries summaries =
   let
     teachingValues = map _.teachingHours summaries
+
     interactionValues = map _.interactionHours summaries
+
     addRank summary =
       let
         teachingPr = percentileRank teachingValues summary.teachingHours
+
         interactionPr = percentileRank interactionValues summary.interactionHours
       in
-      { summary
-      , teachingPr
-      , interactionPr
-      , combinedPr: teachingPr + interactionPr
-      }
+        { summary
+        , teachingPr
+        , interactionPr
+        , combinedPr: teachingPr + interactionPr
+        }
   in
-  Array.sortBy compareRanked (map addRank summaries)
+    Array.sortBy compareRanked (map addRank summaries)
 
 percentileRank :: Array Number -> Number -> Int
 percentileRank values value
   | Array.null values = 0
   | otherwise =
-      Int.round
-        ( Int.toNumber (Array.length (Array.filter (_ < value) values))
-            / Int.toNumber (Array.length values)
-            * 100.0
-        )
+    Int.round
+      ( Int.toNumber (Array.length (Array.filter (_ < value) values))
+          / Int.toNumber (Array.length values)
+          * 100.0
+      )
 
 compareRanked :: RankedSummary -> RankedSummary -> Ordering
-compareRanked left right =
-  case compare right.combinedPr left.combinedPr of
-    EQ ->
-      case
-        compare
-          (right.summary.teachingHours + right.summary.interactionHours)
-          (left.summary.teachingHours + left.summary.interactionHours)
-        of
-        EQ -> compare left.summary.volunteerName right.summary.volunteerName
-        order -> order
+compareRanked left right = case compare right.combinedPr left.combinedPr of
+  EQ -> case compare
+      (right.summary.teachingHours + right.summary.interactionHours)
+      (left.summary.teachingHours + left.summary.interactionHours) of
+    EQ -> compare left.summary.volunteerName right.summary.volunteerName
     order -> order
+  order -> order
 
+-- 處理單一帶PR值資料轉HTML(一列)
 renderSummary :: forall m. Int -> RankedSummary -> H.ComponentHTML Action Slots m
 renderSummary averageInteraction ranked =
   let
     summary = ranked.summary
+
     otherHours = summary.virtueHours + summary.passiveHours
   in
-  HH.tr_
-    [ HH.td_
-        [ HH.button
-            [ HP.class_ (HH.ClassName "summary-student-button")
-            , HE.onClick \_ -> OpenDetail summary
-            ]
-            [ HH.strong_ [ HH.text (summary.volunteerName <> "(" <> show (summary.age - 6) <> ")") ] ]
-        ]
-    , HH.td_
-        [ renderPrPie
-            summary.teachingHours
-            summary.interactionHours
-            ranked.teachingPr
-            ranked.interactionPr
-            averageInteraction
-        ]
-    , HH.td_
-        ( if otherHours <= 0.0 then []
-          else
-            [ HH.strong
-                [ HP.class_ (HH.ClassName "summary-other-hours") ]
-                [ HH.text (formatHours otherHours <> " 小時") ]
-            , HH.span
-                [ HP.class_ (HH.ClassName "summary-other-detail") ]
-                [ HH.text (otherHoursDetail summary) ]
-            ]
-        )
-    ]
+    HH.tr_
+      [ HH.td_
+          [ HH.button
+              [ HP.class_ (HH.ClassName "summary-student-button")
+              , HE.onClick \_ -> OpenDetail summary
+              ]
+              [ HH.strong_ [ HH.text (summary.volunteerName <> "(" <> show (summary.age - 6) <> ")") ] ]
+          ]
+      , HH.td_
+          [ renderPrPie
+              summary.teachingHours
+              summary.interactionHours
+              ranked.teachingPr
+              ranked.interactionPr
+              averageInteraction
+          ]
+      , HH.td_
+          [ HH.div
+              [ HP.class_ (HH.ClassName "summary-raw-data") ]
+              [ HH.div
+                  [ HP.class_ (HH.ClassName "summary-raw-data-left") ]
+                  [ HH.text ("教學：" <> formatHours summary.teachingHours) ]
+              , HH.div
+                  [ HP.class_ (HH.ClassName "summary-raw-data-right") ]
+                  [ HH.text ("互動：" <> formatHours summary.interactionHours) ]
+              ]
+          ]
+      , HH.td_
+          ( if otherHours <= 0.0 then
+              []
+            else
+              [ HH.strong
+                  [ HP.class_ (HH.ClassName "summary-other-hours") ]
+                  [ HH.text (formatHours otherHours <> " 小時") ]
+              , HH.span
+                  [ HP.class_ (HH.ClassName "summary-other-detail") ]
+                  [ HH.text (otherHoursDetail summary) ]
+              ]
+          )
+      ]
 
 otherHoursDetail :: VolunteerHourSummary -> String
 otherHoursDetail summary
   | summary.virtueHours > 0.0 && summary.passiveHours > 0.0 =
-      "品德 "
-        <> formatHours summary.virtueHours
-        <> "・被動 "
-        <> formatHours summary.passiveHours
+    "品德 "
+      <> formatHours summary.virtueHours
+      <> "・被動 "
+      <> formatHours summary.passiveHours
   | summary.virtueHours > 0.0 = "品德 " <> formatHours summary.virtueHours
   | summary.passiveHours > 0.0 = "被動 " <> formatHours summary.passiveHours
   | otherwise = ""
 
-renderPrPie
-  :: forall m
-   . Number
-  -> Number
-  -> Int
-  -> Int
-  -> Int
-  -> H.ComponentHTML Action Slots m
+renderPrPie ::
+  forall m.
+  Number ->
+  Number ->
+  Int ->
+  Int ->
+  Int ->
+  H.ComponentHTML Action Slots m
 renderPrPie teaching interaction teachingPr interactionPr averageInteraction =
   let
     studentInteraction = (ratioPercentages teaching interaction).interaction
   in
-  HH.div
-    [ HP.class_ (HH.ClassName "summary-pie-row") ]
-    [ renderDonut
-        ""
-        teaching
-        interaction
-        [ HH.span [ HP.class_ (HH.ClassName "summary-pr-teaching") ]
-            [ HH.text ("教 PR" <> show teachingPr) ]
-        , HH.span [ HP.class_ (HH.ClassName "summary-pr-interaction") ]
-            [ HH.text ("互 PR" <> show interactionPr) ]
-        ]
-    , renderInteractionPercentage
-        teaching
-        interaction
-        (Just (studentInteraction - averageInteraction))
-    ]
+    HH.div
+      [ HP.class_ (HH.ClassName "summary-pie-row") ]
+      [ renderDonut
+          ""
+          teaching
+          interaction
+          [ HH.span [ HP.class_ (HH.ClassName "summary-pr-teaching") ]
+              [ HH.text ("教 PR" <> show teachingPr) ]
+          , HH.span [ HP.class_ (HH.ClassName "summary-pr-interaction") ]
+              [ HH.text ("互 PR" <> show interactionPr) ]
+          ]
+      , renderInteractionPercentage
+          teaching
+          interaction
+          (Just (studentInteraction - averageInteraction))
+      ]
 
-renderRatioPie
-  :: forall m
-   . String
-  -> Number
-  -> Number
-  -> H.ComponentHTML Action Slots m
+renderRatioPie ::
+  forall m.
+  String ->
+  Number ->
+  Number ->
+  H.ComponentHTML Action Slots m
 renderRatioPie sizeClass teaching interaction =
-  let percentages = ratioPercentages teaching interaction
+  let
+    percentages = ratioPercentages teaching interaction
   in
-  HH.div
-    [ HP.class_ (HH.ClassName "summary-pie-row") ]
-    [ renderDonut
-        sizeClass
-        teaching
-        interaction
-        [ HH.span [ HP.class_ (HH.ClassName "summary-pr-teaching") ]
-            [ HH.text ("教學 " <> show percentages.teaching <> "%") ]
-        ]
-    , renderInteractionPercentage teaching interaction Nothing
-    ]
+    HH.div
+      [ HP.class_ (HH.ClassName "summary-pie-row") ]
+      [ renderDonut
+          sizeClass
+          teaching
+          interaction
+          [ HH.span [ HP.class_ (HH.ClassName "summary-pr-teaching") ]
+              [ HH.text ("教學 " <> show percentages.teaching <> "%") ]
+          ]
+      , renderInteractionPercentage teaching interaction Nothing
+      ]
 
-renderDonut
-  :: forall m
-   . String
-  -> Number
-  -> Number
-  -> Array (H.ComponentHTML Action Slots m)
-  -> H.ComponentHTML Action Slots m
+renderDonut ::
+  forall m.
+  String ->
+  Number ->
+  Number ->
+  Array (H.ComponentHTML Action Slots m) ->
+  H.ComponentHTML Action Slots m
 renderDonut sizeClass teaching interaction centerContent =
   let
     total = teaching + interaction
+
     teachingPercentage =
-      if total <= 0.0 then 0.0
-      else teaching / total * 100.0
+      if total <= 0.0 then
+        0.0
+      else
+        teaching / total * 100.0
+
     interactionPercentage =
-      if total <= 0.0 then 0.0
-      else 100.0 - teachingPercentage
+      if total <= 0.0 then
+        0.0
+      else
+        100.0 - teachingPercentage
+
     teachingArc =
-      if teaching <= 0.0 then []
+      if teaching <= 0.0 then
+        []
       else
         [ donutArc
             "summary-donut-teaching"
@@ -406,8 +430,10 @@ renderDonut sizeClass teaching interaction centerContent =
             0.0
             ("教學 " <> formatHours teaching <> " 小時")
         ]
+
     interactionArc =
-      if interaction <= 0.0 then []
+      if interaction <= 0.0 then
+        []
       else
         [ donutArc
             "summary-donut-interaction"
@@ -416,41 +442,41 @@ renderDonut sizeClass teaching interaction centerContent =
             ("互動 " <> formatHours interaction <> " 小時")
         ]
   in
-  HH.div
-    [ HP.classes
-        [ HH.ClassName "summary-donut-shell"
-        , HH.ClassName sizeClass
-        ]
-    ]
-    [ svgElement "svg"
-        [ HP.attr (HH.AttrName "viewBox") "0 0 120 120"
-        , HP.attr (HH.AttrName "class") "summary-donut-svg"
-        , HP.attr (HH.AttrName "aria-label") "教學與互動時數比例"
-        ]
-        ( [ svgElement "circle"
-              [ HP.attr (HH.AttrName "cx") "60"
-              , HP.attr (HH.AttrName "cy") "60"
-              , HP.attr (HH.AttrName "r") "44"
-              , HP.attr (HH.AttrName "pathLength") "100"
-              , HP.attr (HH.AttrName "class") "summary-donut-track"
-              ]
-              []
+    HH.div
+      [ HP.classes
+          [ HH.ClassName "summary-donut-shell"
+          , HH.ClassName sizeClass
           ]
-            <> teachingArc
-            <> interactionArc
-        )
-    , HH.div
-        [ HP.class_ (HH.ClassName "summary-pie-center") ]
-        centerContent
-    ]
+      ]
+      [ svgElement "svg"
+          [ HP.attr (HH.AttrName "viewBox") "0 0 120 120"
+          , HP.attr (HH.AttrName "class") "summary-donut-svg"
+          , HP.attr (HH.AttrName "aria-label") "教學與互動時數比例"
+          ]
+          ( [ svgElement "circle"
+                [ HP.attr (HH.AttrName "cx") "60"
+                , HP.attr (HH.AttrName "cy") "60"
+                , HP.attr (HH.AttrName "r") "44"
+                , HP.attr (HH.AttrName "pathLength") "100"
+                , HP.attr (HH.AttrName "class") "summary-donut-track"
+                ]
+                []
+            ]
+              <> teachingArc
+              <> interactionArc
+          )
+      , HH.div
+          [ HP.class_ (HH.ClassName "summary-pie-center") ]
+          centerContent
+      ]
 
-donutArc
-  :: forall m
-   . String
-  -> Number
-  -> Number
-  -> String
-  -> H.ComponentHTML Action Slots m
+donutArc ::
+  forall m.
+  String ->
+  Number ->
+  Number ->
+  String ->
+  H.ComponentHTML Action Slots m
 donutArc className percentage offset title =
   svgElement "circle"
     [ HP.attr (HH.AttrName "cx") "60"
@@ -464,41 +490,45 @@ donutArc className percentage offset title =
     ]
     [ svgElement "title" [] [ HH.text title ] ]
 
-renderInteractionPercentage
-  :: forall m
-   . Number
-  -> Number
-  -> Maybe Int
-  -> H.ComponentHTML Action Slots m
+renderInteractionPercentage ::
+  forall m.
+  Number ->
+  Number ->
+  Maybe Int ->
+  H.ComponentHTML Action Slots m
 renderInteractionPercentage teaching interaction difference =
   let
     total = teaching + interaction
+
     percentages = ratioPercentages teaching interaction
+
     toneClass =
-      if total <= 0.0 then "summary-interaction-no-data"
+      if total <= 0.0 then
+        "summary-interaction-no-data"
       else case difference of
         Nothing -> "summary-interaction-average"
         Just value -> interactionToneClass value
   in
-  HH.div
-    [ HP.classes
-        [ HH.ClassName "summary-interaction-percentage"
-        , HH.ClassName toneClass
-        ]
-    ]
-    [ HH.span_ [ HH.text "互動" ]
-    , HH.strong_
-        [ HH.text
-            (if total <= 0.0 then "—" else show percentages.interaction <> "%")
-        ]
-    , case difference of
-        Just value
-          | total > 0.0 ->
-              HH.small_ [ HH.text ("(" <> signedPercentage value <> ")") ]
-        _ ->
-          if total <= 0.0 then HH.small_ [ HH.text "(無紀錄)" ]
-          else HH.text ""
-    ]
+    HH.div
+      [ HP.classes
+          [ HH.ClassName "summary-interaction-percentage"
+          , HH.ClassName toneClass
+          ]
+      ]
+      [ HH.span_ [ HH.text "互動" ]
+      , HH.strong_
+          [ HH.text
+              (if total <= 0.0 then "—" else show percentages.interaction <> "%")
+          ]
+      , case difference of
+          Just value
+            | total > 0.0 -> HH.small_ [ HH.text ("(" <> signedPercentage value <> ")") ]
+          _ ->
+            if total <= 0.0 then
+              HH.small_ [ HH.text "(無紀錄)" ]
+            else
+              HH.text ""
+      ]
 
 interactionToneClass :: Int -> String
 interactionToneClass difference
@@ -509,8 +539,7 @@ interactionToneClass difference
   | otherwise = "summary-interaction-very-high"
 
 signedPercentage :: Int -> String
-signedPercentage value =
-  (if value >= 0 then "+" else "") <> show value <> "%"
+signedPercentage value = (if value >= 0 then "+" else "") <> show value <> "%"
 
 tableHeaders :: Array String
 tableHeaders =
@@ -528,28 +557,31 @@ tableRowValues :: Int -> RankedSummary -> Array String
 tableRowValues averageInteraction ranked =
   let
     summary = ranked.summary
+
     otherHours = summary.virtueHours + summary.passiveHours
-    interactionPercentage =
-      (ratioPercentages summary.teachingHours summary.interactionHours).interaction
+
+    interactionPercentage = (ratioPercentages summary.teachingHours summary.interactionHours).interaction
+
     hasRatio = summary.teachingHours + summary.interactionHours > 0.0
   in
-  [ summary.volunteerName <> "(" <> show (summary.age - 6) <> ")"
-  , formatHours summary.teachingHours
-  , formatHours summary.interactionHours
-  , if otherHours <= 0.0 then "" else formatHours otherHours
-  , show ranked.teachingPr
-  , show ranked.interactionPr
-  , if hasRatio then show interactionPercentage <> "%" else ""
-  , if hasRatio then signedPercentage (interactionPercentage - averageInteraction) else ""
-  ]
+    [ summary.volunteerName <> "(" <> show (summary.age - 6) <> ")"
+    , formatHours summary.teachingHours
+    , formatHours summary.interactionHours
+    , if otherHours <= 0.0 then "" else formatHours otherHours
+    , show ranked.teachingPr
+    , show ranked.interactionPr
+    , if hasRatio then show interactionPercentage <> "%" else ""
+    , if hasRatio then signedPercentage (interactionPercentage - averageInteraction) else ""
+    ]
 
 summaryTableTsv :: Int -> Array RankedSummary -> String
 summaryTableTsv averageInteraction rankedSummaries =
   String.joinWith "\n"
     ( [ String.joinWith "\t" tableHeaders ]
         <> map
-          (String.joinWith "\t" <<< tableRowValues averageInteraction)
-          rankedSummaries
+            -- tableRowValues會進一步處理和整合資料(例如組合出姓名與年級[楊凱睿(4)])
+            (String.joinWith "\t" <<< tableRowValues averageInteraction)
+            rankedSummaries
     )
 
 summaryTableHtml :: Int -> Array RankedSummary -> String
@@ -558,24 +590,25 @@ summaryTableHtml averageInteraction rankedSummaries =
     headerHtml =
       String.joinWith ""
         (map (\header -> htmlCell "th" header) tableHeaders)
+
     bodyHtml =
       String.joinWith ""
         ( map
             ( \ranked ->
                 "<tr>"
                   <> String.joinWith ""
-                    (map (htmlCell "td") (tableRowValues averageInteraction ranked))
+                      (map (htmlCell "td") (tableRowValues averageInteraction ranked))
                   <> "</tr>"
             )
             rankedSummaries
         )
   in
-  "<table style=\"border-collapse:collapse\">"
-    <> "<thead><tr>"
-    <> headerHtml
-    <> "</tr></thead><tbody>"
-    <> bodyHtml
-    <> "</tbody></table>"
+    "<table style=\"border-collapse:collapse\">"
+      <> "<thead><tr>"
+      <> headerHtml
+      <> "</tr></thead><tbody>"
+      <> bodyHtml
+      <> "</tbody></table>"
 
 htmlCell :: String -> String -> String
 htmlCell tag value =
@@ -594,11 +627,11 @@ escapeHtml =
     <<< String.replaceAll (Pattern "<") (Replacement "&lt;")
     <<< String.replaceAll (Pattern "&") (Replacement "&amp;")
 
-foreign import copySummaryTableImpl
-  :: String
-  -> String
-  -> (Boolean -> Effect Unit)
-  -> Effect Unit
+foreign import copySummaryTableImpl ::
+  String ->
+  String ->
+  (Boolean -> Effect Unit) ->
+  Effect Unit
 
 copySummaryTable :: String -> String -> Aff Boolean
 copySummaryTable html plainText =
@@ -606,11 +639,11 @@ copySummaryTable html plainText =
     copySummaryTableImpl html plainText (done <<< Right)
     pure nonCanceler
 
-renderRatioLegend
-  :: forall m
-   . Number
-  -> Number
-  -> H.ComponentHTML Action Slots m
+renderRatioLegend ::
+  forall m.
+  Number ->
+  Number ->
+  H.ComponentHTML Action Slots m
 renderRatioLegend teaching interaction =
   HH.div
     [ HP.class_ (HH.ClassName "summary-ratio-legend") ]
@@ -624,19 +657,22 @@ ratioPercentages :: Number -> Number -> { teaching :: Int, interaction :: Int }
 ratioPercentages teaching interaction =
   let
     total = teaching + interaction
-    teachingPercentage =
-      if total <= 0.0 then 0
-      else Int.round (teaching / total * 100.0)
-  in
-  { teaching: teachingPercentage
-  , interaction: if total <= 0.0 then 0 else 100 - teachingPercentage
-  }
 
-renderDetailModal
-  :: forall m
-   . State
-  -> VolunteerHourSummary
-  -> H.ComponentHTML Action Slots m
+    teachingPercentage =
+      if total <= 0.0 then
+        0
+      else
+        Int.round (teaching / total * 100.0)
+  in
+    { teaching: teachingPercentage
+    , interaction: if total <= 0.0 then 0 else 100 - teachingPercentage
+    }
+
+renderDetailModal ::
+  forall m.
+  State ->
+  VolunteerHourSummary ->
+  H.ComponentHTML Action Slots m
 renderDetailModal state summary =
   HH.div_
     [ HH.div
@@ -666,55 +702,53 @@ renderDetailModal state summary =
         ]
     ]
 
-renderDetailContent
-  :: forall m
-   . State
-  -> VolunteerHourSummary
-  -> H.ComponentHTML Action Slots m
+renderDetailContent ::
+  forall m.
+  State ->
+  VolunteerHourSummary ->
+  H.ComponentHTML Action Slots m
 renderDetailContent state summary
-  | state.isDetailLoading =
-      HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "正在讀取學生明細……" ]
+  | state.isDetailLoading = HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "正在讀取學生明細……" ]
   | Just message <- state.detailError =
-      HH.div
-        [ HP.class_ (HH.ClassName "list-status list-error") ]
-        [ HH.p_ [ HH.text message ]
-        , HH.button
-            [ HP.class_ (HH.ClassName "list-retry-button")
-            , HE.onClick \_ -> OpenDetail summary
-            ]
-            [ HH.text "重新請求" ]
-        ]
+    HH.div
+      [ HP.class_ (HH.ClassName "list-status list-error") ]
+      [ HH.p_ [ HH.text message ]
+      , HH.button
+          [ HP.class_ (HH.ClassName "list-retry-button")
+          , HE.onClick \_ -> OpenDetail summary
+          ]
+          [ HH.text "重新請求" ]
+      ]
   | Just detail <- state.detail =
-      HH.div
-        [ HP.class_ (HH.ClassName "summary-detail-content") ]
-        [ HH.section
-            [ HP.class_ (HH.ClassName "summary-detail-ratio") ]
-            [ HH.div_
-                [ HH.h4_ [ HH.text "類型比例" ]
-                , HH.p_
-                    [ HH.text
-                        ( "其他 "
-                            <> formatHours (summary.virtueHours + summary.passiveHours)
-                            <> " 小時"
-                        )
-                    ]
-                ]
-            , renderRatioPie
-                "summary-pie-large"
-                summary.teachingHours
-                summary.interactionHours
-            , renderRatioLegend summary.teachingHours summary.interactionHours
-            ]
-        , renderActivityTotals detail
-        , renderRecentRecords detail
-        ]
-  | otherwise =
-      HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "目前沒有明細。" ]
+    HH.div
+      [ HP.class_ (HH.ClassName "summary-detail-content") ]
+      [ HH.section
+          [ HP.class_ (HH.ClassName "summary-detail-ratio") ]
+          [ HH.div_
+              [ HH.h4_ [ HH.text "類型比例" ]
+              , HH.p_
+                  [ HH.text
+                      ( "其他 "
+                          <> formatHours (summary.virtueHours + summary.passiveHours)
+                          <> " 小時"
+                      )
+                  ]
+              ]
+          , renderRatioPie
+              "summary-pie-large"
+              summary.teachingHours
+              summary.interactionHours
+          , renderRatioLegend summary.teachingHours summary.interactionHours
+          ]
+      , renderActivityTotals detail
+      , renderRecentRecords detail
+      ]
+  | otherwise = HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "目前沒有明細。" ]
 
-renderActivityTotals
-  :: forall m
-   . VolunteerHourDetail
-  -> H.ComponentHTML Action Slots m
+renderActivityTotals ::
+  forall m.
+  VolunteerHourDetail ->
+  H.ComponentHTML Action Slots m
 renderActivityTotals detail =
   HH.section_
     [ HH.h4_ [ HH.text "參與活動" ]
@@ -747,10 +781,10 @@ renderActivityTotals detail =
           ]
     ]
 
-renderRecentRecords
-  :: forall m
-   . VolunteerHourDetail
-  -> H.ComponentHTML Action Slots m
+renderRecentRecords ::
+  forall m.
+  VolunteerHourDetail ->
+  H.ComponentHTML Action Slots m
 renderRecentRecords detail =
   HH.section_
     [ HH.h4_ [ HH.text "最近紀錄" ]
@@ -787,26 +821,25 @@ renderRecentRecords detail =
           ]
     ]
 
-svgElement
-  :: forall r m
-   . String
-  -> Array (HP.IProp r Action)
-  -> Array (H.ComponentHTML Action Slots m)
-  -> H.ComponentHTML Action Slots m
+svgElement ::
+  forall r m.
+  String ->
+  Array (HP.IProp r Action) ->
+  Array (H.ComponentHTML Action Slots m) ->
+  H.ComponentHTML Action Slots m
 svgElement name =
   HH.elementNS
     (HH.Namespace "http://www.w3.org/2000/svg")
     (HH.ElemName name)
 
 formatHours :: Number -> String
-formatHours value =
-  show (Int.toNumber (Int.round (value * 10.0)) / 10.0)
+formatHours value = show (Int.toNumber (Int.round (value * 10.0)) / 10.0)
 
-handleAction
-  :: forall m
-   . MonadAff m
-  => Action
-  -> H.HalogenM State Action Slots Output m Unit
+handleAction ::
+  forall m.
+  MonadAff m =>
+  Action ->
+  H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   Receive input ->
     H.modify_
@@ -852,17 +885,20 @@ handleAction = case _ of
   CopyTable -> do
     state <- H.get
     let
-      rankedSummaries = rankSummaries state.summaries
+      rankedSummaries = rankSummaries state.summaries -- 拿到排序後且含PR值的資料表
+
       averageInteraction = classInteractionPercentage state.summaries
-      html = summaryTableHtml averageInteraction rankedSummaries
-      plainText = summaryTableTsv averageInteraction rankedSummaries
-    copied <- H.liftAff (copySummaryTable html plainText)
+
+      html = summaryTableHtml averageInteraction rankedSummaries -- 產生HTML格式
+
+      plainText = summaryTableTsv averageInteraction rankedSummaries -- 產生純文字格式
+    copied <- H.liftAff (copySummaryTable html plainText) -- 提供兩種複製這個操作的格式
     H.modify_ _ { copyStatus = Just copied }
-    void $ H.fork do
-      H.liftAff (delay (Milliseconds 2200.0))
-      handleAction ClearCopyStatus
-  ClearCopyStatus ->
-    H.modify_ _ { copyStatus = Nothing }
+    void
+      $ H.fork do
+          H.liftAff (delay (Milliseconds 2200.0))
+          handleAction ClearCopyStatus
+  ClearCopyStatus -> H.modify_ _ { copyStatus = Nothing }
 
 requestVolunteerDetail :: Int -> Aff (Either String VolunteerHourDetail)
 requestVolunteerDetail volunteerId = do
@@ -875,5 +911,7 @@ requestVolunteerDetail volunteerId = do
     Right response -> case readJSON response.body of
       Left errors -> Left ("學生明細格式錯誤：" <> show errors)
       Right (decoded :: VolunteerDetailResponse) ->
-        if decoded.success then Right decoded.data
-        else Left decoded.message
+        if decoded.success then
+          Right decoded.data
+        else
+          Left decoded.message

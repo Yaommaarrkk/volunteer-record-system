@@ -1220,6 +1220,16 @@ body:has(.daily-activity-page) {
   background: #ea4335;
 }
 
+.summary-raw-data {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    font-weight: bold;
+}
+
+.summary-raw-data > div + div { /* 第二個以後 */
+    border-left: 1px solid #ccc;
+}
+
 .summary-other-hours,
 .summary-other-detail {
   display: block;
