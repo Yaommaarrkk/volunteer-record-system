@@ -1,7 +1,6 @@
 module Page.Records where
 
 import Prelude
-
 import Affjax.RequestBody as RequestBody
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.Web as AX
@@ -26,7 +25,8 @@ import Type.Proxy (Proxy(..))
 import Widget.HourRecordForm as HourRecordForm
 import Widget.HourRecordList as HourRecordList
 
-type Slot id = forall query. H.Slot query Output id
+type Slot id
+  = forall query. H.Slot query Output id
 
 _hourRecordForm = Proxy :: Proxy "hourRecordFormSlot"
 
@@ -37,84 +37,86 @@ type Slots
     , hourRecordListSlot :: HourRecordList.Slot Unit
     )
 
-type Input = Unit
+type Input
+  = Unit
 
-type State =
-  { activities :: Array Activity
-  , volunteers :: Array Volunteer
-  , records :: Array HourRecord
-  , historyVolunteerIds :: Array Int
-  , totalRecords :: Int
-  , defaultYear :: Int
-  , isLoading :: Boolean
-  , isLoadingMore :: Boolean
-  , hasMoreRecords :: Boolean
-  , loadError :: Maybe String
-  , isSubmitting :: Boolean
-  , copiedRecord :: Maybe CopiedHourRecord
-  , copyVersion :: Int
-  , successfulSubmitVersion :: Int
-  , notice :: Maybe Notice
-  , noticeVersion :: Int
-  }
+type State
+  = { activities :: Array Activity
+    , volunteers :: Array Volunteer
+    , records :: Array HourRecord
+    , historyVolunteerIds :: Array Int
+    , historyActivityIds :: Array Int
+    , totalRecords :: Int
+    , defaultYear :: Int
+    , isLoading :: Boolean
+    , isLoadingMore :: Boolean
+    , hasMoreRecords :: Boolean
+    , loadError :: Maybe String
+    , isSubmitting :: Boolean
+    , copiedRecord :: Maybe CopiedHourRecord
+    , copyVersion :: Int
+    , successfulSubmitVersion :: Int
+    , notice :: Maybe Notice
+    , noticeVersion :: Int
+    }
 
-type PageData =
-  { activities :: Array Activity
-  , volunteers :: Array Volunteer
-  , records :: Array HourRecord
-  , totalRecords :: Int
-  , defaultYear :: Int
-  }
+type PageData
+  = { activities :: Array Activity
+    , volunteers :: Array Volunteer
+    , records :: Array HourRecord
+    , totalRecords :: Int
+    , defaultYear :: Int
+    }
 
-type RecordOverview =
-  { records :: Array HourRecord
-  , totalRecords :: Int
-  }
+type RecordOverview
+  = { records :: Array HourRecord
+    , totalRecords :: Int
+    }
 
-type ActivitiesResponse =
-  { success :: Boolean
-  , message :: String
-  , data :: Array Activity
-  }
+type ActivitiesResponse
+  = { success :: Boolean
+    , message :: String
+    , data :: Array Activity
+    }
 
-type VolunteersResponse =
-  { success :: Boolean
-  , message :: String
-  , data :: Array Volunteer
-  }
+type VolunteersResponse
+  = { success :: Boolean
+    , message :: String
+    , data :: Array Volunteer
+    }
 
-type HourRecordsResponse =
-  { success :: Boolean
-  , message :: String
-  , data :: Array HourRecord
-  }
+type HourRecordsResponse
+  = { success :: Boolean
+    , message :: String
+    , data :: Array HourRecord
+    }
 
-type HourRecordCountResponse =
-  { success :: Boolean
-  , message :: String
-  , data :: Int
-  }
+type HourRecordCountResponse
+  = { success :: Boolean
+    , message :: String
+    , data :: Int
+    }
 
-type DefaultYearResponse =
-  { success :: Boolean
-  , message :: String
-  , data :: Int
-  }
+type DefaultYearResponse
+  = { success :: Boolean
+    , message :: String
+    , data :: Int
+    }
 
-type MutationResponse =
-  { success :: Boolean
-  , message :: String
-  , data :: Maybe String
-  }
+type MutationResponse
+  = { success :: Boolean
+    , message :: String
+    , data :: Maybe String
+    }
 
 data NoticeKind
   = SuccessNotice
   | ErrorNotice
 
-type Notice =
-  { kind :: NoticeKind
-  , message :: String
-  }
+type Notice
+  = { kind :: NoticeKind
+    , message :: String
+    }
 
 data Action
   = Initialize
@@ -126,7 +128,8 @@ data Action
   | HourRecordListOutput HourRecordList.Output
   | HideNotice Int
 
-data Output = OutputUnit
+data Output
+  = OutputUnit
 
 initialState :: State
 initialState =
@@ -134,6 +137,7 @@ initialState =
   , volunteers: []
   , records: []
   , historyVolunteerIds: []
+  , historyActivityIds: []
   , totalRecords: 0
   , defaultYear: 2026
   , isLoading: true
@@ -190,9 +194,11 @@ render state =
         _hourRecordList
         unit
         HourRecordList.component
-        { records: state.records
+        { activities: state.activities
+        , records: state.records
         , volunteers: state.volunteers
         , filterVolunteerIds: state.historyVolunteerIds
+        , filterActivityIds: state.historyActivityIds
         , totalRecords: state.totalRecords
         , isLoading: state.isLoading
         , isLoadingMore: state.isLoadingMore
@@ -216,11 +222,11 @@ renderNotice = case _ of
       ]
       [ HH.text notice.message ]
 
-handleAction
-  :: forall m
-   . MonadAff m
-  => Action
-  -> H.HalogenM State Action Slots Output m Unit
+handleAction ::
+  forall m.
+  MonadAff m =>
+  Action ->
+  H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   Initialize -> do
     result <- H.liftAff loadPageData
@@ -273,11 +279,10 @@ handleAction = case _ of
       H.modify_ _ { isLoadingMore = false }
       showNotice ErrorNotice message
     Right moreRecords ->
-      H.modify_
-        \state ->
-          let
-            records = state.records <> moreRecords
-          in
+      H.modify_ \state ->
+        let
+          records = state.records <> moreRecords
+        in
           state
             { records = records
             , isLoadingMore = false
@@ -285,11 +290,12 @@ handleAction = case _ of
             }
   HourRecordFormOutput (HourRecordForm.SubmitHourRecord request) -> do
     H.modify_ _ { isSubmitting = true, notice = Nothing }
-    result <- H.liftAff
-      $ sequential
-      $ (\postResult _ -> postResult)
-          <$> parallel (createHourRecord request)
-          <*> parallel (delay (Milliseconds 1000.0))
+    result <-
+      H.liftAff
+        $ sequential
+        $ (\postResult _ -> postResult)
+        <$> parallel (createHourRecord request)
+        <*> parallel (delay (Milliseconds 1000.0))
     case result of
       Left message -> do
         H.modify_ _ { isSubmitting = false }
@@ -308,7 +314,8 @@ handleAction = case _ of
         handleAction (RecordsLoaded recordsResult)
   HourRecordFormOutput (HourRecordForm.UpdateDefaultYear year) -> do
     state <- H.get
-    let oldYear = state.defaultYear
+    let
+      oldYear = state.defaultYear
     H.modify_ _ { defaultYear = year }
     result <- H.liftAff (updateDefaultYear year)
     case result of
@@ -337,14 +344,26 @@ handleAction = case _ of
         }
     showNotice SuccessNotice "已複製到上方輸入區"
   HourRecordListOutput (HourRecordList.VolunteerFilterChanged volunteerIds) -> do
-    H.modify_ _
-      { historyVolunteerIds = volunteerIds
-      , isLoading = true
-      , isLoadingMore = false
-      , hasMoreRecords = true
-      , loadError = Nothing
-      }
+    H.modify_
+      _
+        { historyVolunteerIds = volunteerIds
+        , isLoading = true
+        , isLoadingMore = false
+        , hasMoreRecords = true
+        , loadError = Nothing
+        }
     result <- H.liftAff (loadRecordOverview volunteerIds)
+    handleAction (RecordsLoaded result)
+  HourRecordListOutput (HourRecordList.ActivityFilterChanged activityIds) -> do
+    H.modify_
+      _
+        { historyActivityIds = activityIds
+        , isLoading = true
+        , isLoadingMore = false
+        , hasMoreRecords = true
+        , loadError = Nothing
+        }
+    result <- H.liftAff (loadRecordOverview activityIds)
     handleAction (RecordsLoaded result)
   HourRecordListOutput HourRecordList.LoadMoreRequested -> do
     state <- H.get
@@ -358,19 +377,21 @@ handleAction = case _ of
     when (state.noticeVersion == version)
       $ H.modify_ _ { notice = Nothing }
 
-showNotice
-  :: forall m
-   . MonadAff m
-  => NoticeKind
-  -> String
-  -> H.HalogenM State Action Slots Output m Unit
+showNotice ::
+  forall m.
+  MonadAff m =>
+  NoticeKind ->
+  String ->
+  H.HalogenM State Action Slots Output m Unit
 showNotice kind message = do
   state <- H.get
-  let version = state.noticeVersion + 1
+  let
+    version = state.noticeVersion + 1
   H.modify_ _ { notice = Just { kind, message }, noticeVersion = version }
-  void $ H.fork do
-    H.liftAff (delay (Milliseconds 3000.0))
-    handleAction (HideNotice version)
+  void
+    $ H.fork do
+        H.liftAff (delay (Milliseconds 3000.0))
+        handleAction (HideNotice version)
 
 loadPageData :: Aff (Either String PageData)
 loadPageData = do
@@ -431,8 +452,8 @@ hourRecordPageSize = 20
 loadHourRecords :: Array Int -> Aff (Either String (Array HourRecord))
 loadHourRecords volunteerIds = loadHourRecordsPage volunteerIds 0
 
-loadRecordOverview :: Array Int -> Aff (Either String RecordOverview)
-loadRecordOverview volunteerIds = do
+loadRecordOverview :: Array Int -> Array Int -> Aff (Either String RecordOverview)
+loadRecordOverview volunteerIds activityIds = do
   recordsResult <- loadHourRecords volunteerIds
   case recordsResult of
     Left message -> pure (Left message)
@@ -458,7 +479,8 @@ loadHourRecordsPage volunteerIds offset = do
       ResponseFormat.string
       ( apiUrl
           ( "/api/hour-records?"
-              <> volunteerFilterParameters volunteerIds
+              <> genericFilterParameters "volunteerIds" volunteerIds -- ?volunteerIds=1&volunteerIds=2
+              <> genericFilterParameters "activityIds" activityIds
               <> "offset="
               <> show offset
               <> "&limit="
@@ -471,19 +493,25 @@ loadHourRecordsPage volunteerIds offset = do
       Left errors -> Left ("時數紀錄格式錯誤：" <> show errors)
       Right (decoded :: HourRecordsResponse) -> Right decoded.data
 
-volunteerFilterQuery :: Array Int -> String
-volunteerFilterQuery volunteerIds =
-  if Array.null volunteerIds then ""
-  else "?" <> volunteerFilterParameters volunteerIds <> ""
+filterQuery :: Array Int -> String
+filterQuery volunteerIds =
+  if Array.null volunteerIds then
+    ""
+  else
+    "?"
+    <> genericFilterParameters "volunteerIds" volunteerIds
+    <> genericFilterParameters "activityIds" activityIds
+    <> ""
 
-volunteerFilterParameters :: Array Int -> String
-volunteerFilterParameters volunteerIds =
-  if Array.null volunteerIds then ""
-  else String.joinWith "" (map (\id -> "ids=" <> show id <> "&") volunteerIds)
+genericFilterParameters :: String -> Array Int -> String
+genericFilterParameters type ids =
+  if Array.null ids then
+    ""
+  else
+    String.joinWith "" (map (\id -> type <> "=" <> show id <> "&") ids)
 
 createHourRecord :: HourRecordForm.CreateHourRecordRequest -> Aff (Either String String)
-createHourRecord request =
-  postMutation (apiUrl "/api/hour-record") (writeJSON request) "新增時數紀錄"
+createHourRecord request = postMutation (apiUrl "/api/hour-record") (writeJSON request) "新增時數紀錄"
 
 updateDefaultYear :: Int -> Aff (Either String String)
 updateDefaultYear year =
@@ -513,14 +541,16 @@ patchMutation url body operation = case jsonParser body of
     result <- AX.patch ResponseFormat.string url (RequestBody.json json)
     pure (decodeMutationResponse operation result)
 
-decodeMutationResponse
-  :: String
-  -> Either AX.Error (AX.Response String)
-  -> Either String String
+decodeMutationResponse ::
+  String ->
+  Either AX.Error (AX.Response String) ->
+  Either String String
 decodeMutationResponse operation = case _ of
   Left error -> Left (AX.printError error)
   Right response -> case readJSON response.body of
     Left errors -> Left (operation <> "回應格式錯誤：" <> show errors)
     Right (decoded :: MutationResponse) ->
-      if decoded.success then Right decoded.message
-      else Left decoded.message
+      if decoded.success then
+        Right decoded.message
+      else
+        Left decoded.message
