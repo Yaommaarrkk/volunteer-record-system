@@ -36,6 +36,7 @@ type Input
     , records :: Array HourRecord
     , volunteers :: Array Volunteer
     , filterVolunteerIds :: Array Int
+    , filterActivityIds :: Array Int
     , totalRecords :: Int
     , isLoading :: Boolean
     , isLoadingMore :: Boolean

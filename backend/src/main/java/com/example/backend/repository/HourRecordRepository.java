@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Collections;
 
@@ -88,8 +89,9 @@ public class HourRecordRepository {
         return jdbcTemplate.query(sql, HOUR_RECORD_ROW_MAPPER, limit, offset);
     }
 
-    public List<HourRecord> getPageByVolunteerIds(List<Integer> ids, int offset, int limit) {
-        String placeholders = String.join(", ", Collections.nCopies(ids.size(), "?"));
+    public List<HourRecord> getPageByFilter(List<Integer> volunteerIds, List<Integer> activityIds, int offset, int limit) {
+        String placeholders_vIDs = String.join(", ", Collections.nCopies(volunteerIds.size(), "?"));
+        String placeholders_aIDs = String.join(", ", Collections.nCopies(activityIds.size(), "?"));
         String sql = """
             SELECT
                 hour_record.id,
@@ -108,41 +110,58 @@ public class HourRecordRepository {
             JOIN activity_type_color
               ON activity_type_color.default_type = hour_record.activity_type
             JOIN volunteer ON volunteer.id = hour_record.volunteer_id
-            WHERE hour_record.volunteer_id IN (%s)
+            WHERE hour_record.volunteer_id IN (%s) -- 篩選Ids 經由JAVA動態填充問號 %s的部分會被多個問號取代
+             AND hour_record.activity_id IN (%s)
             ORDER BY hour_record.created_at DESC, hour_record.id DESC
             LIMIT ?
             OFFSET ?
-            """.formatted(placeholders);
+            """.formatted(placeholders_vIDs, placeholders_aIDs);
 
-        Object[] parameters = new Object[ids.size() + 2];
-        for (int index = 0; index < ids.size(); index++) {
-            parameters[index] = ids.get(index);
+        Object[] parameters = new Object[volunteerIds.size() + activityIds.size() + 2];
+        int index = 0;
+        for (Integer volunteerId : volunteerIds) {
+            parameters[index++] = volunteerId;
         }
-        parameters[ids.size()] = limit;
-        parameters[ids.size() + 1] = offset;
+        for (Integer activityId : activityIds) {
+            parameters[index++] = activityId;
+        }
+        parameters[index++] = limit;
+        parameters[index] = offset;
 
         return jdbcTemplate.query(sql, HOUR_RECORD_ROW_MAPPER, parameters);
     }
 
-    public long getCount() {
-        String sql = """
-            SELECT COUNT(*)
-            FROM hour_record
-            """;
+    public long getCount(List<Integer> volunteerIds, List<Integer> activityIds) {
+        StringBuilder sql = new StringBuilder("""
+        SELECT COUNT(*)
+        FROM hour_record
+        """);
 
-        Long count = jdbcTemplate.queryForObject(sql, Long.class);
-        return count == null ? 0L : count;
-    }
+        List<String> conditions = new ArrayList<>(); // 不含WHERE跟AND的SQL
+        List<Object> params = new ArrayList<>();
 
-    public long getCountByVolunteerIds(List<Integer> ids) {
-        String placeholders = String.join(", ", Collections.nCopies(ids.size(), "?"));
-        String sql = """
-            SELECT COUNT(*)
-            FROM hour_record
-            WHERE volunteer_id IN (%s)
-            """.formatted(placeholders);
+        if (!volunteerIds.isEmpty()) {
+            String placeholders =
+                    String.join(", ", Collections.nCopies(volunteerIds.size(), "?"));
 
-        Long count = jdbcTemplate.queryForObject(sql, Long.class, ids.toArray());
+            conditions.add("volunteer_id IN (" + placeholders + ")");
+            params.addAll(volunteerIds);
+        }
+
+        if (!activityIds.isEmpty()) {
+            String placeholders =
+                    String.join(", ", Collections.nCopies(activityIds.size(), "?"));
+
+            conditions.add("activity_id IN (" + placeholders + ")");
+            params.addAll(activityIds);
+        }
+
+        if (!conditions.isEmpty()) { // 如果有需要任何filter
+            sql.append(" WHERE ");
+            sql.append(String.join(" AND ", conditions)); // 第一個參數是分隔符 第二個是要連接的東西
+        }
+
+        Long count = jdbcTemplate.queryForObject(sql.toString(), Long.class, params.toArray());
         return count == null ? 0L : count;
     }
 
