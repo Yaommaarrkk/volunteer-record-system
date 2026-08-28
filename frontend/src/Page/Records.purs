@@ -352,7 +352,7 @@ handleAction = case _ of
         , hasMoreRecords = true
         , loadError = Nothing
         }
-    result <- H.liftAff (loadRecordOverview volunteerIds [])
+    result <- H.liftAff (loadRecordOverview volunteerIds state.historyActivityIds)
     handleAction (RecordsLoaded result)
   HourRecordListOutput (HourRecordList.ActivityFilterChanged activityIds) -> do
     H.modify_
@@ -363,7 +363,7 @@ handleAction = case _ of
         , hasMoreRecords = true
         , loadError = Nothing
         }
-    result <- H.liftAff (loadRecordOverview [] activityIds)
+    result <- H.liftAff (loadRecordOverview state.historyVolunteerIds activityIds)
     handleAction (RecordsLoaded result)
   HourRecordListOutput HourRecordList.LoadMoreRequested -> do
     state <- H.get

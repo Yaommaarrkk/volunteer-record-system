@@ -102,13 +102,13 @@ public class HourRecordRepository {
             params.addAll(activityIds);
         }
 
-        params.add(limit);
-        params.add(offset);
-
         if (!conditions.isEmpty()) { // 如果有需要任何filter
             sql.append(" WHERE ");
             sql.append(String.join(" AND ", conditions)); // 第一個參數是分隔符 第二個是要連接的東西
         }
+
+        params.add(limit);
+        params.add(offset);
 
         sql.append(" ORDER BY hour_record.created_at DESC, hour_record.id DESC ");
         sql.append(" LIMIT ? OFFSET ?");
