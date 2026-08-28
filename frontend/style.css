@@ -2350,7 +2350,7 @@ body:has(.daily-activity-page) {
   top: calc(100% + 6px);
   left: 0;
   display: grid;
-  width: 190px;
+  width: 228px;
   max-height: 220px;
   gap: 5px;
   overflow-y: auto;
@@ -2369,6 +2369,8 @@ body:has(.daily-activity-page) {
 
 .participant-unseated-option {
   min-height: 36px;
+  width: 200px;
+  max-width: 100%;
   border: 1px solid #d5e1dd;
   border-radius: 7px;
   padding: 6px 9px;
@@ -2601,9 +2603,18 @@ body:has(.daily-activity-page) {
   color: #fff;
 }
 
-.filter-button {
+.filter-button,
+.activity-color-option-gap {
   display: flex;
+  align-items: center;
   gap: 10px;
+}
+
+.activity-color-option-name {
+  font-size: 15px;
+  font-weight: 700;
+  align-items: center;
+  overflow-wrap: anywhere; /* 太長就換行 */
 }
 
 @media (max-width: 720px) {

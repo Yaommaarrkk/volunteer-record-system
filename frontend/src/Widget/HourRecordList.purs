@@ -600,20 +600,20 @@ renderActivityFilter state =
                 ]
                 [ HH.span_ [ HH.text "xxx" ]
                 , HH.span_ [ HH.text "選活動" ]
-                -- , HH.span_ [ HH.text if state.isFilterActivitiesOpen then "▴" else "▾" ]
+                , HH.span_ [ HH.text if state.isActivityFilterOpen then "▴" else "▾" ]
                 ]
-            -- , if state.isFilterActivitiesOpen then
-            --     HH.div
-            --       [ HP.class_ (HH.ClassName "participant-unseated-menu") ]
-            --       ( if Array.null state.activities then
-            --           [ HH.p_ [ HH.text "沒有活動" ] ]
-            --         else
-            --           map
-            --             (renderFilterActivityOption state.draftFilterActivityIds)
-            --             state.activities
-            --       )
-            --   else
-            --     HH.text ""
+            , if state.isActivityFilterOpen then
+                HH.div
+                  [ HP.class_ (HH.ClassName "participant-unseated-menu") ]
+                  ( if Array.null state.activities then
+                      [ HH.p_ [ HH.text "沒有活動" ] ]
+                    else
+                      map
+                        (renderFilterActivityOption state.draftFilterActivityIds)
+                        state.activities
+                  )
+              else
+                HH.text ""
             ]
         else
           HH.text ""
@@ -649,12 +649,17 @@ renderFilterActivityOption selectedIds activity =
         )
     , HE.onClick \_ -> ToggleFilterActivity activity.id
     ]
-    [ HH.span
-        [ HP.class_ (HH.ClassName "hour-record-type-tag")
-        , HP.style ("background-color: " <> activity.tagColor)
+    [ HH.div
+        [ HP.class_ (HH.ClassName "activity-color-option-gap") ]
+        [ HH.span
+            [ HP.class_ (HH.ClassName "hour-record-type-tag")
+            , HP.style ("background-color: " <> activity.tagColor)
+            ]
+            [ HH.text (activityTypeLabel activity.defaultType) ]
+        , HH.div
+            [ HP.class_ (HH.ClassName "activity-color-option-name") ]
+            [ HH.text activity.name ]
         ]
-        [ HH.text (activityTypeLabel activity.defaultType) ]
-    , HH.text activity.name
     ]
 
 toggleId :: Int -> Array Int -> Array Int
