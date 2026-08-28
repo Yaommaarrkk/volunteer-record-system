@@ -151,8 +151,11 @@ render state =
         [ HH.div_
             [ HH.h2_ [ HH.text "登錄歷史" ]
             , HH.p_ [ HH.text "點左側方框可多選；Ctrl 跳選；Shift 連續選取" ]
-            , renderVolunteerFilter state
-            , renderActivityFilter state
+            , HH.div
+                [ HP.class_ (HH.ClassName "filter-button") ]
+                [ renderVolunteerFilter state
+                , renderActivityFilter state
+                ]
             ]
         , HH.div
             [ HP.class_ (HH.ClassName "hour-record-list-actions") ]
@@ -446,7 +449,7 @@ handleAction = case _ of
       pure unit
     else
       H.raise (DeleteRequested state.selectedIds)
-  ToggleVolunteerFilter -> -- 若已開則全關 若未開則開啟並關閉其他學生選單
+  ToggleVolunteerFilter ->  -- 若已開則全關 若未開則開啟並關閉其他學生選單
     H.modify_ \state ->
       if state.isVolunteerFilterOpen then
         state { isVolunteerFilterOpen = false, isFilterOtherStudentsOpen = false }
@@ -523,7 +526,7 @@ renderVolunteerFilter state =
           [ HP.class_ (HH.ClassName "seat-picker-trigger")
           , HE.onClick \_ -> ToggleVolunteerFilter
           ]
-          [ HH.text (if Array.null state.filterVolunteerIds then "篩選學生（全部）" else selectedNames) ]
+          [ HH.text (if Array.null state.filterVolunteerIds then "篩選學生(全部)" else selectedNames) ]
       , if state.isVolunteerFilterOpen then
           HH.div
             [ HP.class_ (HH.ClassName "seat-picker hour-record-filter-picker") ]
@@ -584,10 +587,10 @@ renderActivityFilter state =
           )
       ]
       [ HH.button
-          [ HP.class_ (HH.ClassName "hour-record-primary-row")
+          [ HP.class_ (HH.ClassName "seat-picker-trigger")
           , HE.onClick \_ -> ToggleActivityFilter
           ]
-          [ HH.text (if Array.null state.filterActivityIds then "篩選活動（全部）" else selectedNames) ]
+          [ HH.text (if Array.null state.filterActivityIds then "篩選活動(全部)" else selectedNames) ]
       , if state.isActivityFilterOpen then
           HH.div
             [ HP.class_ (HH.ClassName "participant-unseated-dropdown") ]

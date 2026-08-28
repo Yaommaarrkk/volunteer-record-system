@@ -2601,6 +2601,11 @@ body:has(.daily-activity-page) {
   color: #fff;
 }
 
+.filter-button {
+  display: flex;
+  gap: 10px;
+}
+
 @media (max-width: 720px) {
   .home {
     align-items: start;
@@ -2728,7 +2733,6 @@ body:has(.daily-activity-page) {
     position: static;
     width: 100%;
   }
-
 }
 
 @media (min-width: 721px) and (max-width: 980px) {
@@ -2753,4 +2757,6 @@ body:has(.daily-activity-page) {
   .hour-record-primary-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+
 }
