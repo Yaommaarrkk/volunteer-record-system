@@ -594,23 +594,23 @@ renderActivityFilter state =
       , if state.isActivityFilterOpen then
           HH.div
             [ HP.class_ (HH.ClassName "participant-unseated-dropdown") ]
-            [ HH.button
-                [ HP.class_ (HH.ClassName "participant-unseated-trigger")
-                -- , HE.onClick \_ -> ToggleFilterActivity activity.id
-                ]
-                [ HH.span_ [ HH.text "xxx" ]
-                , HH.span_ [ HH.text "選活動" ]
-                , HH.span_ [ HH.text if state.isActivityFilterOpen then "▴" else "▾" ]
-                ]
-            , if state.isActivityFilterOpen then
+            [ if state.isActivityFilterOpen then
                 HH.div
                   [ HP.class_ (HH.ClassName "participant-unseated-menu") ]
                   ( if Array.null state.activities then
                       [ HH.p_ [ HH.text "沒有活動" ] ]
                     else
-                      map
-                        (renderFilterActivityOption state.draftFilterActivityIds)
-                        state.activities
+                      [ HH.div
+                          [ HP.classes
+                              [ HH.ClassName "participant-seat-actions"
+                              , HH.ClassName "activity-filter-actions"
+                              ]
+                          ]
+                          [ HH.button [ HP.class_ (HH.ClassName "seat-confirm-button"), HE.onClick \_ -> ApplyActivityFilter ] [ HH.text "套用" ]
+                          , HH.button [ HP.class_ (HH.ClassName "seat-clear-button"), HE.onClick \_ -> ClearActivityFilter ] [ HH.text "清除" ]
+                          ]
+                      ]
+                        <> map (renderFilterActivityOption state.draftFilterActivityIds) state.activities -- 產生選項們
                   )
               else
                 HH.text ""
