@@ -128,17 +128,19 @@ public class HourRecordController {
                     .body(ApiResponse.fail("offset 必須大於等於 0，limit 必須介於 1 到 100"));
         }
 
-        if (volunteerIds == null || volunteerIds.isEmpty() || activityIds == null || activityIds.isEmpty()) {
-            return ResponseEntity.ok(
-                    ApiResponse.success(hourRecordRepository.getPage(offset, limit))
-            );
-        } else {
-            List<Integer> vIDs = volunteerIds.stream().distinct().toList();
-            List<Integer> aIDs = activityIds.stream().distinct().toList();
-            return ResponseEntity.ok(
-                    ApiResponse.success(hourRecordRepository.getPageByFilter(vIDs, aIDs, offset, limit))
-            );
-        }
+        List<Integer> vIDs = volunteerIds == null
+                ? List.of()
+                : volunteerIds.stream().distinct().toList();
+
+        List<Integer> aIDs = activityIds == null
+                ? List.of()
+                : activityIds.stream().distinct().toList();
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        hourRecordRepository.getPage(vIDs, aIDs, offset, limit)
+                )
+        );
     }
 
     @GetMapping("/hour-records/count")

@@ -62,8 +62,8 @@ public class HourRecordRepository {
                 ));
     }
 
-    public List<HourRecord> getPage(int offset, int limit) {
-        String sql = """
+    public List<HourRecord> getPage(List<Integer> volunteerIds, List<Integer> activityIds, int offset, int limit) {
+        StringBuilder sql = new StringBuilder("""
             SELECT
                 hour_record.id,
                 hour_record.activity_id,
@@ -81,61 +81,47 @@ public class HourRecordRepository {
             JOIN activity_type_color
               ON activity_type_color.default_type = hour_record.activity_type
             JOIN volunteer ON volunteer.id = hour_record.volunteer_id
-            ORDER BY hour_record.created_at DESC, hour_record.id DESC
-            LIMIT ?
-            OFFSET ?
-            """;
+            """);
 
-        return jdbcTemplate.query(sql, HOUR_RECORD_ROW_MAPPER, limit, offset);
-    }
+        List<String> conditions = new ArrayList<>(); // 不含WHERE跟AND的SQL
+        List<Object> params = new ArrayList<>();
 
-    public List<HourRecord> getPageByFilter(List<Integer> volunteerIds, List<Integer> activityIds, int offset, int limit) {
-        String placeholders_vIDs = String.join(", ", Collections.nCopies(volunteerIds.size(), "?"));
-        String placeholders_aIDs = String.join(", ", Collections.nCopies(activityIds.size(), "?"));
-        String sql = """
-            SELECT
-                hour_record.id,
-                hour_record.activity_id,
-                activity.name AS activity_name,
-                hour_record.activity_type,
-                activity_type_color.tag_color,
-                hour_record.activity_date,
-                hour_record.volunteer_id,
-                volunteer.name AS volunteer_name,
-                hour_record.hours,
-                hour_record.note,
-                hour_record.created_at
-            FROM hour_record
-            JOIN activity ON activity.id = hour_record.activity_id
-            JOIN activity_type_color
-              ON activity_type_color.default_type = hour_record.activity_type
-            JOIN volunteer ON volunteer.id = hour_record.volunteer_id
-            WHERE hour_record.volunteer_id IN (%s) -- 篩選Ids 經由JAVA動態填充問號 %s的部分會被多個問號取代
-             AND hour_record.activity_id IN (%s)
-            ORDER BY hour_record.created_at DESC, hour_record.id DESC
-            LIMIT ?
-            OFFSET ?
-            """.formatted(placeholders_vIDs, placeholders_aIDs);
+        if (!volunteerIds.isEmpty()) {
+            String placeholders =
+                    String.join(", ", Collections.nCopies(volunteerIds.size(), "?"));
 
-        Object[] parameters = new Object[volunteerIds.size() + activityIds.size() + 2];
-        int index = 0;
-        for (Integer volunteerId : volunteerIds) {
-            parameters[index++] = volunteerId;
+            conditions.add("hour_record.volunteer_id IN (" + placeholders + ")");
+            params.addAll(volunteerIds);
         }
-        for (Integer activityId : activityIds) {
-            parameters[index++] = activityId;
-        }
-        parameters[index++] = limit;
-        parameters[index] = offset;
 
-        return jdbcTemplate.query(sql, HOUR_RECORD_ROW_MAPPER, parameters);
+        if (!activityIds.isEmpty()) {
+            String placeholders =
+                    String.join(", ", Collections.nCopies(activityIds.size(), "?"));
+
+            conditions.add("hour_record.activity_id IN (" + placeholders + ")");
+            params.addAll(activityIds);
+        }
+
+        params.add(limit);
+        params.add(offset);
+
+        if (!conditions.isEmpty()) { // 如果有需要任何filter
+            sql.append(" WHERE ");
+            sql.append(String.join(" AND ", conditions)); // 第一個參數是分隔符 第二個是要連接的東西
+        }
+
+        sql.append(" ORDER BY hour_record.created_at DESC, hour_record.id DESC ");
+        sql.append(" LIMIT ? OFFSET ?");
+
+
+        return jdbcTemplate.query(sql.toString(), HOUR_RECORD_ROW_MAPPER, params.toArray());
     }
 
     public long getCount(List<Integer> volunteerIds, List<Integer> activityIds) {
         StringBuilder sql = new StringBuilder("""
-        SELECT COUNT(*)
-        FROM hour_record
-        """);
+            SELECT COUNT(*)
+            FROM hour_record
+            """);
 
         List<String> conditions = new ArrayList<>(); // 不含WHERE跟AND的SQL
         List<Object> params = new ArrayList<>();
