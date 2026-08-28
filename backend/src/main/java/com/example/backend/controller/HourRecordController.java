@@ -117,7 +117,8 @@ public class HourRecordController {
     @GetMapping("/hour-records")
     // 登錄歷史的抓取資料 從第offset開始向資料庫抓取limit筆紀錄
     public ResponseEntity<Response<List<HourRecord>>> getHourRecords(
-            @RequestParam(required = false) List<Integer> ids,
+            @RequestParam(required = false) List<Integer> volunteerIds,
+            @RequestParam(required = false) List<Integer> activityIds,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "20") int limit
     ) {
@@ -127,28 +128,38 @@ public class HourRecordController {
                     .body(ApiResponse.fail("offset 必須大於等於 0，limit 必須介於 1 到 100"));
         }
 
-        if (ids == null || ids.isEmpty()) {
-            return ResponseEntity.ok(
-                    ApiResponse.success(hourRecordRepository.getPage(offset, limit))
-            );
-        } else {
-            return ResponseEntity.ok(
-                    ApiResponse.success(hourRecordRepository.getPageByVolunteerIds(ids.stream().distinct().toList(), offset, limit))
-            );
-        }
+        List<Integer> vIDs = volunteerIds == null
+                ? List.of()
+                : volunteerIds.stream().distinct().toList();
+
+        List<Integer> aIDs = activityIds == null
+                ? List.of()
+                : activityIds.stream().distinct().toList();
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        hourRecordRepository.getPage(vIDs, aIDs, offset, limit)
+                )
+        );
     }
 
     @GetMapping("/hour-records/count")
-    // 總筆數 用於[120/471筆紀錄]
     public ResponseEntity<Response<Long>> getHourRecordCount(
-            @RequestParam(required = false) List<Integer> ids
+            @RequestParam(required = false) List<Integer> volunteerIds,
+            @RequestParam(required = false) List<Integer> activityIds
     ) {
-        if (ids == null || ids.isEmpty()) {
-            return ResponseEntity.ok(ApiResponse.success(hourRecordRepository.getCount()));
-        }
+        List<Integer> vIDs = volunteerIds == null
+                ? List.of()
+                : volunteerIds.stream().distinct().toList();
+
+        List<Integer> aIDs = activityIds == null
+                ? List.of()
+                : activityIds.stream().distinct().toList();
 
         return ResponseEntity.ok(
-                ApiResponse.success(hourRecordRepository.getCountByVolunteerIds(ids.stream().distinct().toList()))
+                ApiResponse.success(
+                        hourRecordRepository.getCount(vIDs, aIDs)
+                )
         );
     }
 

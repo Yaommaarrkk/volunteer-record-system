@@ -6,12 +6,11 @@ module Widget.HourRecordList
   ) where
 
 import Prelude
-
 import Config.Api (apiUrl)
 import Data.Array as Array
 import Data.Maybe (Maybe(..))
 import Data.String.Common as String
-import Domain.Activity (activityTypeLabel)
+import Domain.Activity (Activity, activityTypeLabel)
 import Domain.HourRecord (CopiedHourRecord, HourRecord)
 import Domain.Volunteer (Seat, SeatPeriod(..), Volunteer, getGrade, seatForPeriod, seatPeriodToApi, formatUpdatedAt)
 import Effect (Effect)
@@ -25,39 +24,47 @@ import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent (MouseEvent)
 import Web.UIEvent.MouseEvent as MouseEvent
 
-type Slot id = forall query. H.Slot query Output id
+type Slot id
+  = forall query. H.Slot query Output id
 
 type Slots :: Row Type
-type Slots = ()
+type Slots
+  = ()
 
-type Input =
-  { records :: Array HourRecord
-  , volunteers :: Array Volunteer
-  , filterVolunteerIds :: Array Int
-  , totalRecords :: Int
-  , isLoading :: Boolean
-  , isLoadingMore :: Boolean
-  , hasMore :: Boolean
-  , loadError :: Maybe String
-  }
+type Input
+  = { activities :: Array Activity
+    , records :: Array HourRecord
+    , volunteers :: Array Volunteer
+    , filterVolunteerIds :: Array Int
+    , filterActivityIds :: Array Int
+    , totalRecords :: Int
+    , isLoading :: Boolean
+    , isLoadingMore :: Boolean
+    , hasMore :: Boolean
+    , loadError :: Maybe String
+    }
 
-type State =
-  { records :: Array HourRecord
-  , volunteers :: Array Volunteer
-  , filterVolunteerIds :: Array Int
-  , draftFilterVolunteerIds :: Array Int
-  , filterSeatPeriod :: SeatPeriod
-  , isVolunteerFilterOpen :: Boolean
-  , isFilterOtherStudentsOpen :: Boolean
-  , totalRecords :: Int
-  , isLoading :: Boolean
-  , isLoadingMore :: Boolean
-  , hasMore :: Boolean
-  , loadError :: Maybe String
-  , selectedIds :: Array Int
-  , selectionAnchor :: Maybe Int
-  , isDeleteDialogOpen :: Boolean
-  }
+type State
+  = { activities :: Array Activity
+    , records :: Array HourRecord
+    , volunteers :: Array Volunteer
+    , filterVolunteerIds :: Array Int
+    , filterActivityIds :: Array Int
+    , draftFilterVolunteerIds :: Array Int
+    , draftFilterActivityIds :: Array Int
+    , filterSeatPeriod :: SeatPeriod
+    , isVolunteerFilterOpen :: Boolean
+    , isFilterOtherStudentsOpen :: Boolean
+    , isActivityFilterOpen :: Boolean
+    , totalRecords :: Int
+    , isLoading :: Boolean
+    , isLoadingMore :: Boolean
+    , hasMore :: Boolean
+    , loadError :: Maybe String
+    , selectedIds :: Array Int
+    , selectionAnchor :: Maybe Int
+    , isDeleteDialogOpen :: Boolean
+    }
 
 data Action
   = Initialize
@@ -71,11 +78,15 @@ data Action
   | CancelDelete
   | ConfirmDelete
   | ToggleVolunteerFilter
+  | ToggleActivityFilter
   | ToggleFilterVolunteer Int
   | ToggleFilterOtherStudents
+  | ToggleFilterActivity Int
   | SelectFilterSeatPeriod String
   | ApplyVolunteerFilter
   | ClearVolunteerFilter
+  | ApplyActivityFilter
+  | ClearActivityFilter
   | Retry
 
 data Output
@@ -84,33 +95,39 @@ data Output
   | LoadMoreRequested
   | RetryRequested
   | VolunteerFilterChanged (Array Int)
+  | ActivityFilterChanged (Array Int)
 
-foreign import subscribeWindowScroll
-  :: (Unit -> Effect Unit)
-  -> Effect (Effect Unit)
+foreign import subscribeWindowScroll ::
+  (Unit -> Effect Unit) ->
+  Effect (Effect Unit)
 
 foreign import isLoadMoreSentinelVisible :: Effect Boolean
 
 component :: forall query m. MonadEffect m => H.Component query Input Output m
 component =
   H.mkComponent
-    { initialState: \input ->
-        { records: input.records
-        , volunteers: input.volunteers
-        , filterVolunteerIds: input.filterVolunteerIds
-        , draftFilterVolunteerIds: input.filterVolunteerIds
-        , filterSeatPeriod: Year114SecondSemester
-        , isVolunteerFilterOpen: false
-        , isFilterOtherStudentsOpen: false
-        , totalRecords: input.totalRecords
-        , isLoading: input.isLoading
-        , isLoadingMore: input.isLoadingMore
-        , hasMore: input.hasMore
-        , loadError: input.loadError
-        , selectedIds: []
-        , selectionAnchor: Nothing
-        , isDeleteDialogOpen: false
-        }
+    { initialState:
+        \input ->
+          { activities: input.activities
+          , records: input.records
+          , volunteers: input.volunteers
+          , filterVolunteerIds: input.filterVolunteerIds
+          , filterActivityIds: input.filterActivityIds
+          , draftFilterVolunteerIds: input.filterVolunteerIds
+          , draftFilterActivityIds: input.filterActivityIds
+          , filterSeatPeriod: Year114SecondSemester
+          , isVolunteerFilterOpen: false
+          , isActivityFilterOpen: false
+          , isFilterOtherStudentsOpen: false
+          , totalRecords: input.totalRecords
+          , isLoading: input.isLoading
+          , isLoadingMore: input.isLoadingMore
+          , hasMore: input.hasMore
+          , loadError: input.loadError
+          , selectedIds: []
+          , selectionAnchor: Nothing
+          , isDeleteDialogOpen: false
+          }
     , render
     , eval:
         H.mkEval
@@ -125,14 +142,20 @@ render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.section
     [ HP.class_ (HH.ClassName "student-list-card hour-record-list-card") ]
-    [ if state.isDeleteDialogOpen then renderDeleteDialog (Array.length state.selectedIds)
-      else HH.text ""
+    [ if state.isDeleteDialogOpen then
+        renderDeleteDialog (Array.length state.selectedIds)
+      else
+        HH.text ""
     , HH.div
         [ HP.class_ (HH.ClassName "list-heading") ]
         [ HH.div_
             [ HH.h2_ [ HH.text "登錄歷史" ]
             , HH.p_ [ HH.text "點左側方框可多選；Ctrl 跳選；Shift 連續選取" ]
-            , renderVolunteerFilter state
+            , HH.div
+                [ HP.class_ (HH.ClassName "filter-button") ]
+                [ renderVolunteerFilter state
+                , renderActivityFilter state
+                ]
             ]
         , HH.div
             [ HP.class_ (HH.ClassName "hour-record-list-actions") ]
@@ -168,61 +191,59 @@ render state =
         , HP.attr (HH.AttrName "data-hour-record-load-more") ""
         ]
         [ HH.text
-            if state.isLoadingMore then "正在載入更多紀錄…"
-            else if state.hasMore then "繼續往下捲動以載入更多"
-            else if Array.null state.records then ""
-            else "已載入全部紀錄"
+            if state.isLoadingMore then
+              "正在載入更多紀錄…"
+            else if state.hasMore then
+              "繼續往下捲動以載入更多"
+            else if Array.null state.records then
+              ""
+            else
+              "已載入全部紀錄"
         ]
     ]
 
 renderRecordList :: forall m. State -> H.ComponentHTML Action Slots m
 renderRecordList state
-  | state.isLoading =
-      HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "正在載入時數紀錄…" ]
+  | state.isLoading = HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "正在載入時數紀錄…" ]
   | Just message <- state.loadError =
-      HH.div
-        [ HP.class_ (HH.ClassName "list-status list-error") ]
-        [ HH.p_ [ HH.text message ]
-        , HH.button
-            [ HP.class_ (HH.ClassName "list-retry-button")
-            , HE.onClick \_ -> Retry
-            ]
-            [ HH.text "重新請求" ]
-        ]
-  | Array.null state.records =
-      HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "目前沒有時數登錄紀錄。" ]
+    HH.div
+      [ HP.class_ (HH.ClassName "list-status list-error") ]
+      [ HH.p_ [ HH.text message ]
+      , HH.button
+          [ HP.class_ (HH.ClassName "list-retry-button")
+          , HE.onClick \_ -> Retry
+          ]
+          [ HH.text "重新請求" ]
+      ]
+  | Array.null state.records = HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "目前沒有時數登錄紀錄。" ]
   | otherwise =
-      HH.div
-        [ HP.class_ (HH.ClassName "student-table-scroll") ]
-        [ HH.table
-            [ HP.classes [ HH.ClassName "student-table", HH.ClassName "hour-record-table" ] ]
-            [ HH.thead_
-                [ HH.tr_
-                    [ HH.th_ [ HH.text "" ]
-                    , HH.th_ [ HH.text "日期" ]
-                    , HH.th_ [ HH.text "活動名" ]
-                    , HH.th_ [ HH.text "類型" ]
-                    , HH.th_ [ HH.text "學生" ]
-                    , HH.th_ [ HH.text "時數" ]
-                    , HH.th_ [ HH.text "備註" ]
-                    , HH.th_ [ HH.text "登錄時間" ]
-                    , HH.th_ [ HH.text "操作" ]
-                    ]
-                ]
-            , HH.tbody_
-                (Array.mapWithIndex (renderRecord state.selectedIds) state.records)
-            ]
-        ]
+    HH.div
+      [ HP.class_ (HH.ClassName "student-table-scroll") ]
+      [ HH.table
+          [ HP.classes [ HH.ClassName "student-table", HH.ClassName "hour-record-table" ] ]
+          [ HH.thead_
+              [ HH.tr_
+                  [ HH.th_ [ HH.text "" ]
+                  , HH.th_ [ HH.text "日期" ]
+                  , HH.th_ [ HH.text "活動名" ]
+                  , HH.th_ [ HH.text "類型" ]
+                  , HH.th_ [ HH.text "學生" ]
+                  , HH.th_ [ HH.text "時數" ]
+                  , HH.th_ [ HH.text "備註" ]
+                  , HH.th_ [ HH.text "登錄時間" ]
+                  , HH.th_ [ HH.text "操作" ]
+                  ]
+              ]
+          , HH.tbody_
+              (Array.mapWithIndex (renderRecord state.selectedIds) state.records)
+          ]
+      ]
 
-renderRecord
-  :: forall m
-   . Array Int
-  -> Int
-  -> HourRecord
-  -> H.ComponentHTML Action Slots m
+renderRecord :: forall m. Array Int -> Int -> HourRecord -> H.ComponentHTML Action Slots m
 renderRecord selectedIds index record =
   let
     isSelected = Array.elem record.id selectedIds
+
     createdAt = formatUpdatedAt record.createdAt
   in
     HH.tr
@@ -308,11 +329,7 @@ renderDeleteDialog selectedCount =
         ]
     ]
 
-handleAction
-  :: forall m
-   . MonadEffect m
-  => Action
-  -> H.HalogenM State Action Slots Output m Unit
+handleAction :: forall m. MonadEffect m => Action -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   Initialize ->
     void
@@ -320,24 +337,32 @@ handleAction = case _ of
       $ ViewportChanged
       <$ HS.makeEmitter subscribeWindowScroll
   Receive input -> do
-    H.modify_
-      \state ->
-        state
-        { records = input.records
+    H.modify_ \state ->
+      state
+        { activities = input.activities
+        , records = input.records
         , volunteers = input.volunteers
         , filterVolunteerIds = input.filterVolunteerIds
+        , filterActivityIds = input.filterActivityIds
         , totalRecords = input.totalRecords
         , isLoading = input.isLoading
         , isLoadingMore = input.isLoadingMore
         , hasMore = input.hasMore
         , loadError = input.loadError
         , selectedIds =
-            Array.filter
-              (\id -> Array.any (\record -> record.id == id) input.records)
-              state.selectedIds
+          Array.filter
+            (\id -> Array.any (\record -> record.id == id) input.records)
+            state.selectedIds
         , draftFilterVolunteerIds =
-            if state.isVolunteerFilterOpen then state.draftFilterVolunteerIds
-            else input.filterVolunteerIds
+          if state.isVolunteerFilterOpen then
+            state.draftFilterVolunteerIds
+          else
+            input.filterVolunteerIds
+        , draftFilterActivityIds =
+          if state.isActivityFilterOpen then
+            state.draftFilterActivityIds
+          else
+            input.filterActivityIds
         }
   ViewportChanged -> do
     state <- H.get
@@ -351,30 +376,31 @@ handleAction = case _ of
     case Array.index state.records index of
       Nothing -> pure unit
       Just record ->
-        if MouseEvent.shiftKey event then
-          case state.selectionAnchor of
-            Nothing ->
-              H.modify_ _ { selectedIds = [ record.id ], selectionAnchor = Just index }
-            Just anchor ->
-              let
-                start = min anchor index
-                end = max anchor index
-                rangeIds = map _.id (Array.slice start (end + 1) state.records)
-                selectedIds =
-                  if MouseEvent.ctrlKey event || MouseEvent.metaKey event then
-                    Array.nub (state.selectedIds <> rangeIds)
-                  else
-                    rangeIds
-              in
-                H.modify_ _ { selectedIds = selectedIds }
+        if MouseEvent.shiftKey event then case state.selectionAnchor of
+          Nothing -> H.modify_ _ { selectedIds = [ record.id ], selectionAnchor = Just index }
+          Just anchor ->
+            let
+              start = min anchor index
+
+              end = max anchor index
+
+              rangeIds = map _.id (Array.slice start (end + 1) state.records)
+
+              selectedIds =
+                if MouseEvent.ctrlKey event || MouseEvent.metaKey event then
+                  Array.nub (state.selectedIds <> rangeIds)
+                else
+                  rangeIds
+            in
+              H.modify_ _ { selectedIds = selectedIds }
         else if MouseEvent.ctrlKey event || MouseEvent.metaKey event then
           H.modify_
             _
               { selectedIds =
-                  if Array.elem record.id state.selectedIds then
-                    Array.filter (_ /= record.id) state.selectedIds
-                  else
-                    Array.snoc state.selectedIds record.id
+                if Array.elem record.id state.selectedIds then
+                  Array.filter (_ /= record.id) state.selectedIds
+                else
+                  Array.snoc state.selectedIds record.id
               , selectionAnchor = Just index
               }
         else
@@ -384,10 +410,10 @@ handleAction = case _ of
     H.modify_ \state ->
       state
         { selectedIds =
-            if Array.elem id state.selectedIds then
-              Array.filter (_ /= id) state.selectedIds
-            else
-              Array.snoc state.selectedIds id
+          if Array.elem id state.selectedIds then
+            Array.filter (_ /= id) state.selectedIds
+          else
+            Array.snoc state.selectedIds id
         , selectionAnchor = Just index
         }
   CopyRecord record event -> do
@@ -411,15 +437,19 @@ handleAction = case _ of
         }
   AskDelete -> do
     state <- H.get
-    if Array.null state.selectedIds then pure unit
-    else H.modify_ _ { isDeleteDialogOpen = true }
+    if Array.null state.selectedIds then
+      pure unit
+    else
+      H.modify_ _ { isDeleteDialogOpen = true }
   CancelDelete -> H.modify_ _ { isDeleteDialogOpen = false }
   ConfirmDelete -> do
     state <- H.get
     H.modify_ _ { isDeleteDialogOpen = false }
-    if Array.null state.selectedIds then pure unit
-    else H.raise (DeleteRequested state.selectedIds)
-  ToggleVolunteerFilter ->
+    if Array.null state.selectedIds then
+      pure unit
+    else
+      H.raise (DeleteRequested state.selectedIds)
+  ToggleVolunteerFilter ->  -- 若已開則全關 若未開則開啟並關閉其他學生選單
     H.modify_ \state ->
       if state.isVolunteerFilterOpen then
         state { isVolunteerFilterOpen = false, isFilterOtherStudentsOpen = false }
@@ -429,25 +459,48 @@ handleAction = case _ of
           , isFilterOtherStudentsOpen = false
           , draftFilterVolunteerIds = state.filterVolunteerIds
           }
+  ToggleActivityFilter ->
+    H.modify_ \state ->
+      if state.isActivityFilterOpen then
+        state { isActivityFilterOpen = false }
+      else
+        state
+          { isActivityFilterOpen = true
+          , draftFilterActivityIds = state.filterActivityIds
+          }
   ToggleFilterVolunteer id ->
     H.modify_ \state ->
       state
         { draftFilterVolunteerIds = toggleId id state.draftFilterVolunteerIds }
-  ToggleFilterOtherStudents ->
-    H.modify_ \state -> state { isFilterOtherStudentsOpen = not state.isFilterOtherStudentsOpen }
-  SelectFilterSeatPeriod value ->
-    H.modify_ _ { filterSeatPeriod = seatPeriodFromApi value, isFilterOtherStudentsOpen = false }
+  ToggleFilterOtherStudents -> H.modify_ \state -> state { isFilterOtherStudentsOpen = not state.isFilterOtherStudentsOpen }
+  ToggleFilterActivity id ->
+    H.modify_ \state ->
+      state
+        { draftFilterActivityIds = toggleId id state.draftFilterActivityIds }
+  SelectFilterSeatPeriod value -> H.modify_ _ { filterSeatPeriod = seatPeriodFromApi value, isFilterOtherStudentsOpen = false }
   ApplyVolunteerFilter -> do
     state <- H.get
-    H.modify_ _
-      { filterVolunteerIds = state.draftFilterVolunteerIds
-      , isVolunteerFilterOpen = false
-      , isFilterOtherStudentsOpen = false
-      }
+    H.modify_
+      _
+        { filterVolunteerIds = state.draftFilterVolunteerIds
+        , isVolunteerFilterOpen = false
+        , isFilterOtherStudentsOpen = false
+        }
     H.raise (VolunteerFilterChanged state.draftFilterVolunteerIds)
+  ApplyActivityFilter -> do
+    state <- H.get
+    H.modify_
+      _
+        { filterActivityIds = state.draftFilterActivityIds
+        , isActivityFilterOpen = false
+        }
+    H.raise (ActivityFilterChanged state.draftFilterActivityIds)
   ClearVolunteerFilter -> do
     H.modify_ _ { draftFilterVolunteerIds = [], filterVolunteerIds = [] }
     H.raise (VolunteerFilterChanged [])
+  ClearActivityFilter -> do
+    H.modify_ _ { draftFilterActivityIds = [], filterActivityIds = [] }
+    H.raise (ActivityFilterChanged [])
   Retry -> H.raise RetryRequested
 
 renderVolunteerFilter :: forall m. State -> H.ComponentHTML Action Slots m
@@ -458,6 +511,7 @@ renderVolunteerFilter state =
         # Array.filter (\volunteer -> Array.elem volunteer.id state.filterVolunteerIds)
         # map volunteerWithGrade
         # String.joinWith ", "
+
     volunteersWithoutSeat =
       state.volunteers
         # Array.filter (\volunteer -> seatForPeriod state.filterSeatPeriod volunteer == Nothing)
@@ -472,7 +526,7 @@ renderVolunteerFilter state =
           [ HP.class_ (HH.ClassName "seat-picker-trigger")
           , HE.onClick \_ -> ToggleVolunteerFilter
           ]
-          [ HH.text (if Array.null state.filterVolunteerIds then "篩選學生（全部）" else selectedNames) ]
+          [ HH.text (if Array.null state.filterVolunteerIds then "篩選學生(全部)" else selectedNames) ]
       , if state.isVolunteerFilterOpen then
           HH.div
             [ HP.class_ (HH.ClassName "seat-picker hour-record-filter-picker") ]
@@ -501,7 +555,8 @@ renderVolunteerFilter state =
                     , if state.isFilterOtherStudentsOpen then
                         HH.div [ HP.class_ (HH.ClassName "participant-unseated-menu") ]
                           (if Array.null volunteersWithoutSeat then [ HH.p_ [ HH.text "沒有其他學生" ] ] else map (renderFilterVolunteerOption state.draftFilterVolunteerIds) volunteersWithoutSeat)
-                      else HH.text ""
+                      else
+                        HH.text ""
                     ]
                 , HH.span [ HP.class_ (HH.ClassName "seat-stage-button") ] [ HH.text "講台" ]
                 , HH.div
@@ -512,7 +567,56 @@ renderVolunteerFilter state =
                 ]
             , HH.div [ HP.class_ (HH.ClassName "seat-grid participant-seat-grid") ] (map (renderFilterSeat state) seats)
             ]
-        else HH.text ""
+        else
+          HH.text ""
+      ]
+
+renderActivityFilter :: forall m. State -> H.ComponentHTML Action Slots m
+renderActivityFilter state =
+  let
+    selectedNames =
+      state.activities
+        # Array.filter (\activity -> Array.elem activity.id state.filterActivityIds)
+        # map _.name
+        # String.joinWith ", "
+  in
+    HH.div
+      [ HP.classes
+          ( [ HH.ClassName "hour-record-filter" ]
+              <> if state.isActivityFilterOpen then [ HH.ClassName "seat-picker-open" ] else []
+          )
+      ]
+      [ HH.button
+          [ HP.class_ (HH.ClassName "seat-picker-trigger")
+          , HE.onClick \_ -> ToggleActivityFilter
+          ]
+          [ HH.text (if Array.null state.filterActivityIds then "篩選活動(全部)" else selectedNames) ]
+      , if state.isActivityFilterOpen then
+          HH.div
+            [ HP.class_ (HH.ClassName "participant-unseated-dropdown") ]
+            [ if state.isActivityFilterOpen then
+                HH.div
+                  [ HP.class_ (HH.ClassName "participant-unseated-menu") ]
+                  ( if Array.null state.activities then
+                      [ HH.p_ [ HH.text "沒有活動" ] ]
+                    else
+                      [ HH.div
+                          [ HP.classes
+                              [ HH.ClassName "participant-seat-actions"
+                              , HH.ClassName "activity-filter-actions"
+                              ]
+                          ]
+                          [ HH.button [ HP.class_ (HH.ClassName "seat-confirm-button"), HE.onClick \_ -> ApplyActivityFilter ] [ HH.text "套用" ]
+                          , HH.button [ HP.class_ (HH.ClassName "seat-clear-button"), HE.onClick \_ -> ClearActivityFilter ] [ HH.text "清除" ]
+                          ]
+                      ]
+                        <> map (renderFilterActivityOption state.draftFilterActivityIds) state.activities -- 產生選項們
+                  )
+              else
+                HH.text ""
+            ]
+        else
+          HH.text ""
       ]
 
 renderFilterVolunteerOption :: forall m. Array Int -> Volunteer -> H.ComponentHTML Action Slots m
@@ -532,6 +636,31 @@ renderFilterSeat state seat = case volunteerAtSeat state.filterSeatPeriod seat s
       , HE.onClick \_ -> ToggleFilterVolunteer volunteer.id
       ]
       [ HH.strong_ [ HH.text (volunteerWithGrade volunteer) ] ]
+
+renderFilterActivityOption :: forall m. Array Int -> Activity -> H.ComponentHTML Action Slots m
+renderFilterActivityOption selectedIds activity =
+  HH.button
+    [ HP.classes
+        ( [ HH.ClassName "participant-unseated-option" ]
+            <> if Array.elem activity.id selectedIds then
+                [ HH.ClassName "participant-unseated-option-selected" ]
+              else
+                []
+        )
+    , HE.onClick \_ -> ToggleFilterActivity activity.id
+    ]
+    [ HH.div
+        [ HP.class_ (HH.ClassName "activity-color-option-gap") ]
+        [ HH.span
+            [ HP.class_ (HH.ClassName "hour-record-type-tag")
+            , HP.style ("background-color: " <> activity.tagColor)
+            ]
+            [ HH.text (activityTypeLabel activity.defaultType) ]
+        , HH.div
+            [ HP.class_ (HH.ClassName "activity-color-option-name") ]
+            [ HH.text activity.name ]
+        ]
+    ]
 
 toggleId :: Int -> Array Int -> Array Int
 toggleId id ids = if Array.elem id ids then Array.filter (_ /= id) ids else Array.snoc ids id

@@ -2275,13 +2275,15 @@ body:has(.daily-activity-page) {
 
 .hour-record-filter-picker .participant-seat-actions {
   display: grid;
-  width: 100%;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: auto;
+  grid-template-columns: 40px 40px;
   gap: 4px;
 }
 
 .hour-record-filter-picker .seat-confirm-button,
-.hour-record-filter-picker .seat-clear-button {
+.hour-record-filter-picker .seat-clear-button,
+.activity-filter-actions .seat-confirm-button,
+.activity-filter-actions .seat-clear-button {
   width: 100%;
   height: 42px;
   min-height: 42px;
@@ -2344,14 +2346,14 @@ body:has(.daily-activity-page) {
   font-size: 12px;
 }
 
-.participant-unseated-menu {
+.participant-unseated-menu { /* 篩選活動框 */
   position: absolute;
   z-index: 8;
   top: calc(100% + 6px);
   left: 0;
   display: grid;
-  width: 190px;
-  max-height: 220px;
+  width: 232px;
+  max-height: 400px;
   gap: 5px;
   overflow-y: auto;
   border: 1px solid #b9cec8;
@@ -2369,6 +2371,8 @@ body:has(.daily-activity-page) {
 
 .participant-unseated-option {
   min-height: 36px;
+  width: 200px;
+  max-width: 100%;
   border: 1px solid #d5e1dd;
   border-radius: 7px;
   padding: 6px 9px;
@@ -2390,7 +2394,7 @@ body:has(.daily-activity-page) {
 
 .participant-seat-actions {
   display: grid;
-  grid-template-columns: 54px 54px;
+  grid-template-columns: 48px 48px;
   gap: 8px;
   justify-self: end;
 }
@@ -2601,6 +2605,28 @@ body:has(.daily-activity-page) {
   color: #fff;
 }
 
+.filter-button,
+.activity-color-option-gap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.activity-color-option-name {
+  font-size: 15px;
+  font-weight: 700;
+  align-items: center;
+  overflow-wrap: anywhere; /* 太長就換行 */
+}
+
+.activity-filter-actions {
+    display: grid;
+    grid-template-columns: 40px 40px;
+    gap: 8px;
+    width: 88px;
+    justify-self: end;
+}
+
 @media (max-width: 720px) {
   .home {
     align-items: start;
@@ -2728,7 +2754,6 @@ body:has(.daily-activity-page) {
     position: static;
     width: 100%;
   }
-
 }
 
 @media (min-width: 721px) and (max-width: 980px) {
@@ -2753,4 +2778,6 @@ body:has(.daily-activity-page) {
   .hour-record-primary-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+
 }
