@@ -275,6 +275,16 @@ handleAction = case _ of
         showNotice SuccessNotice message
         volunteersResult <- H.liftAff loadVolunteers
         handleAction (VolunteersLoaded volunteersResult)
+  StudentListOutput (StudentList.UpdateSummary delta) -> do
+    H.modify_ _ { isLoading = true, loadError = Nothing }
+    result <- H.liftAff (deleteVolunteer delta)
+    case result of
+      Left message -> do
+        H.modify_ _ { isLoading = false }
+        showNotice ErrorNotice message
+      Right message -> do
+        showNotice SuccessNotice message
+        handleAction LoadCurrentData
   StudentListOutput (StudentList.UpdateNameRequested id name) ->
     handleStudentUpdate (updateVolunteerName id name)
   StudentListOutput (StudentList.UpdateAgeRequested id age) ->
@@ -420,6 +430,8 @@ createVolunteer volunteerRq = case jsonParser (writeJSON volunteerRq) of
 createActivity :: ActivityForm.CreateActivityRequest -> Aff (Either String String)
 createActivity activityRequest =
   postMutation (apiUrl "/api/activity") (writeJSON activityRequest) "新增活動"
+
+
 
 deleteVolunteer :: Int -> Aff (Either String String)
 deleteVolunteer id = do

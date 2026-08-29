@@ -6,7 +6,6 @@ module Widget.StudentList
   ) where
 
 import Prelude
-
 import Data.Array as Array
 import Data.Int as Int
 import Data.Maybe (Maybe(..))
@@ -19,31 +18,33 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Widget.OutsideClick as OutsideClick
 
-type Slot id = forall query. H.Slot query Output id
+type Slot id
+  = forall query. H.Slot query Output id
 
 type Slots :: Row Type
-type Slots = ()
+type Slots
+  = ()
 
-type Input =
-  { volunteers :: Array Volunteer
-  , isLoading :: Boolean
-  , loadError :: Maybe String
-  }
+type Input
+  = { volunteers :: Array Volunteer
+    , isLoading :: Boolean
+    , loadError :: Maybe String
+    }
 
-type State =
-  { volunteers :: Array Volunteer
-  , isLoading :: Boolean
-  , loadError :: Maybe String
-  , selectedSeatPeriod :: SeatPeriod
-  , sortMode :: SortMode
-  , editingVolunteerId :: Maybe Int
-  , editingField :: Maybe EditField
-  , draftName :: String
-  , draftAge :: Int
-  , draftSeat :: Maybe Seat
-  , isSeatPickerOpen :: Boolean
-  , pendingDelete :: Maybe Volunteer
-  }
+type State
+  = { volunteers :: Array Volunteer
+    , isLoading :: Boolean
+    , loadError :: Maybe String
+    , selectedSeatPeriod :: SeatPeriod
+    , sortMode :: SortMode
+    , editingVolunteerId :: Maybe Int
+    , editingField :: Maybe EditField
+    , draftName :: String
+    , draftAge :: Int
+    , draftSeat :: Maybe Seat
+    , isSeatPickerOpen :: Boolean
+    , pendingDelete :: Maybe Volunteer
+    }
 
 data SortMode
   = SortBySeat
@@ -64,6 +65,7 @@ data Action
   | AskDelete Volunteer
   | CancelDelete
   | ConfirmDelete
+  | AskSummaryEdit
   | SelectSeatPeriod SeatPeriod
   | SelectSortMode SortMode
   | ToggleVolunteerEdit Int
@@ -84,6 +86,7 @@ data Action
 data Output
   = RetryRequested
   | DeleteRequested Int
+  | UpdateSummary Int
   | UpdateNameRequested Int String
   | UpdateAgeRequested Int Int
   | UpdateSeatRequested Int SeatPeriod (Maybe Seat)
@@ -91,20 +94,21 @@ data Output
 component :: forall query m. MonadEffect m => H.Component query Input Output m
 component =
   H.mkComponent
-    { initialState: \input ->
-        { volunteers: input.volunteers
-        , isLoading: input.isLoading
-        , loadError: input.loadError
-        , selectedSeatPeriod: Year114SecondSemester
-        , sortMode: SortBySeat
-        , editingVolunteerId: Nothing
-        , editingField: Nothing
-        , draftName: ""
-        , draftAge: 7
-        , draftSeat: Nothing
-        , isSeatPickerOpen: false
-        , pendingDelete: Nothing
-        }
+    { initialState:
+        \input ->
+          { volunteers: input.volunteers
+          , isLoading: input.isLoading
+          , loadError: input.loadError
+          , selectedSeatPeriod: Year114SecondSemester
+          , sortMode: SortBySeat
+          , editingVolunteerId: Nothing
+          , editingField: Nothing
+          , draftName: ""
+          , draftAge: 7
+          , draftSeat: Nothing
+          , isSeatPickerOpen: false
+          , pendingDelete: Nothing
+          }
     , render
     , eval:
         H.mkEval
@@ -122,15 +126,26 @@ render state =
     [ case state.pendingDelete of
         Nothing -> HH.text ""
         Just volunteer -> renderDeleteDialog volunteer
+    , case state.pendingSummaryEdit of
+        Nothing -> HH.text ""
+        Just volunteer -> renderSummaryEditDialog
     , HH.div
         [ HP.class_ (HH.ClassName "list-heading") ]
         [ HH.div_
             [ HH.h2_ [ HH.text "學生清單" ]
             , HH.p_ [ HH.text "資料來源：GET /api/volunteers" ]
             ]
-        , HH.span
-            [ HP.class_ (HH.ClassName "student-count") ]
-            [ HH.text (show (Array.length state.volunteers) <> " 位學生") ]
+        , HH.div
+            [ HP.class_ (HH.ClassName "student-actions") ]
+            [ HH.span
+                [ HP.class_ (HH.ClassName "student-count") ]
+                [ HH.text (show (Array.length state.volunteers) <> " 位學生") ]
+            , HH.button
+                [ HP.class_ (HH.ClassName "student-delete-button")
+                , HE.onClick \_ -> AskSummaryEdit
+                ]
+                [ HH.text "修改學年" ]
+            ]
         ]
     , HH.div
         [ HP.class_ (HH.ClassName "student-list-controls") ]
@@ -157,12 +172,12 @@ render state =
     , renderVolunteerList state
     ]
 
-seatPeriodRadio
-  :: forall m
-   . String
-  -> SeatPeriod
-  -> SeatPeriod
-  -> H.ComponentHTML Action Slots m
+seatPeriodRadio ::
+  forall m.
+  String ->
+  SeatPeriod ->
+  SeatPeriod ->
+  H.ComponentHTML Action Slots m
 seatPeriodRadio label period selectedPeriod =
   HH.label_
     [ HH.input
@@ -174,12 +189,12 @@ seatPeriodRadio label period selectedPeriod =
     , HH.text label
     ]
 
-sortModeRadio
-  :: forall m
-   . String
-  -> SortMode
-  -> SortMode
-  -> H.ComponentHTML Action Slots m
+sortModeRadio ::
+  forall m.
+  String ->
+  SortMode ->
+  SortMode ->
+  H.ComponentHTML Action Slots m
 sortModeRadio label sortMode selectedSortMode =
   HH.label_
     [ HH.input
@@ -193,63 +208,57 @@ sortModeRadio label sortMode selectedSortMode =
 
 renderVolunteerList :: forall m. State -> H.ComponentHTML Action Slots m
 renderVolunteerList state
-  | state.isLoading =
-      HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "正在載入學生資料…" ]
+  | state.isLoading = HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "正在載入學生資料…" ]
   | Just message <- state.loadError =
-      HH.div
-        [ HP.class_ (HH.ClassName "list-status list-error") ]
-        [ HH.p_ [ HH.text message ]
-        , HH.button
-            [ HP.class_ (HH.ClassName "list-retry-button")
-            , HE.onClick \_ -> Retry
-            ]
-            [ HH.text "重新請求" ]
-        ]
-  | Array.null state.volunteers =
-      HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "目前沒有學生資料。" ]
+    HH.div
+      [ HP.class_ (HH.ClassName "list-status list-error") ]
+      [ HH.p_ [ HH.text message ]
+      , HH.button
+          [ HP.class_ (HH.ClassName "list-retry-button")
+          , HE.onClick \_ -> Retry
+          ]
+          [ HH.text "重新請求" ]
+      ]
+  | Array.null state.volunteers = HH.div [ HP.class_ (HH.ClassName "list-status") ] [ HH.text "目前沒有學生資料。" ]
   | otherwise =
-      HH.div
-        [ HP.classes
-            ( [ HH.ClassName "student-table-scroll" ]
-                <> if state.isSeatPickerOpen then
-                    [ HH.ClassName "seat-picker-active" ]
-                  else
-                    []
-            )
-        ]
-        [ HH.table
-            [ HP.class_ (HH.ClassName "student-table") ]
-            [ HH.thead_
-                [ HH.tr_
-                    [ HH.th_ [ HH.text "編號" ]
-                    , HH.th_ [ HH.text "姓名" ]
-                    , HH.th_ [ HH.text "年級" ]
-                    , HH.th_ [ HH.text "座位" ]
-                    , HH.th_ [ HH.text "操作" ]
-                    , HH.th_ [ HH.text "修改時間" ]
-                    ]
-                ]
-            , HH.tbody_
-                (map (renderVolunteer state) (sortedVolunteers state))
-            ]
-        ]
+    HH.div
+      [ HP.classes
+          ( [ HH.ClassName "student-table-scroll" ]
+              <> if state.isSeatPickerOpen then
+                  [ HH.ClassName "seat-picker-active" ]
+                else
+                  []
+          )
+      ]
+      [ HH.table
+          [ HP.class_ (HH.ClassName "student-table") ]
+          [ HH.thead_
+              [ HH.tr_
+                  [ HH.th_ [ HH.text "編號" ]
+                  , HH.th_ [ HH.text "姓名" ]
+                  , HH.th_ [ HH.text "年級" ]
+                  , HH.th_ [ HH.text "座位" ]
+                  , HH.th_ [ HH.text "操作" ]
+                  , HH.th_ [ HH.text "修改時間" ]
+                  ]
+              ]
+          , HH.tbody_
+              (map (renderVolunteer state) (sortedVolunteers state))
+          ]
+      ]
 
 sortedVolunteers :: State -> Array Volunteer
-sortedVolunteers state =
-  Array.sortBy (compareVolunteers state.sortMode state.selectedSeatPeriod) state.volunteers
+sortedVolunteers state = Array.sortBy (compareVolunteers state.sortMode state.selectedSeatPeriod) state.volunteers
 
 compareVolunteers :: SortMode -> SeatPeriod -> Volunteer -> Volunteer -> Ordering
-compareVolunteers sortMode period left right =
-  case sortMode of
-    SortBySeat ->
-      withNameFallback
-        (compareMaybeSeat (seatForPeriod period left) (seatForPeriod period right))
-        left
-        right
-    SortByAge ->
-      withNameFallback (compare left.age right.age) left right
-    SortByUpdatedAt ->
-      withNameFallback (compare right.updatedAt left.updatedAt) left right
+compareVolunteers sortMode period left right = case sortMode of
+  SortBySeat ->
+    withNameFallback
+      (compareMaybeSeat (seatForPeriod period left) (seatForPeriod period right))
+      left
+      right
+  SortByAge -> withNameFallback (compare left.age right.age) left right
+  SortByUpdatedAt -> withNameFallback (compare right.updatedAt left.updatedAt) left right
 
 withNameFallback :: Ordering -> Volunteer -> Volunteer -> Ordering
 withNameFallback ordering left right = case ordering of
@@ -269,36 +278,37 @@ renderVolunteer :: forall m. State -> Volunteer -> H.ComponentHTML Action Slots 
 renderVolunteer state volunteer =
   let
     isEditing = state.editingVolunteerId == Just volunteer.id
+
     updatedAt = formatUpdatedAt volunteer.updatedAt
   in
-  HH.tr_
-    [ HH.td_ [ HH.text (show volunteer.id) ]
-    , renderNameCell state isEditing volunteer
-    , renderAgeCell state isEditing volunteer
-    , renderSeatCell state isEditing volunteer
-    , HH.td_
-        [ HH.div
-            [ HP.class_ (HH.ClassName "student-row-actions") ]
-            [ HH.button
-                [ HP.class_ (HH.ClassName "student-edit-button")
-                , HE.onClick \_ -> ToggleVolunteerEdit volunteer.id
-                ]
-                [ HH.text if isEditing then "完成" else "修改" ]
-            , HH.button
-                [ HP.class_ (HH.ClassName "student-delete-button")
-                , HE.onClick \_ -> AskDelete volunteer
-                ]
-                [ HH.text "刪除" ]
-            ]
-        ]
-    , HH.td_
-        [ HH.div
-            [ HP.class_ (HH.ClassName "student-updated-at") ]
-            [ HH.span_ [ HH.text updatedAt.date ]
-            , HH.span_ [ HH.text updatedAt.time ]
-            ]
-        ]
-    ]
+    HH.tr_
+      [ HH.td_ [ HH.text (show volunteer.id) ]
+      , renderNameCell state isEditing volunteer
+      , renderAgeCell state isEditing volunteer
+      , renderSeatCell state isEditing volunteer
+      , HH.td_
+          [ HH.div
+              [ HP.class_ (HH.ClassName "student-row-actions") ]
+              [ HH.button
+                  [ HP.class_ (HH.ClassName "student-edit-button")
+                  , HE.onClick \_ -> ToggleVolunteerEdit volunteer.id
+                  ]
+                  [ HH.text if isEditing then "完成" else "修改" ]
+              , HH.button
+                  [ HP.class_ (HH.ClassName "student-delete-button")
+                  , HE.onClick \_ -> AskDelete volunteer
+                  ]
+                  [ HH.text "刪除" ]
+              ]
+          ]
+      , HH.td_
+          [ HH.div
+              [ HP.class_ (HH.ClassName "student-updated-at") ]
+              [ HH.span_ [ HH.text updatedAt.date ]
+              , HH.span_ [ HH.text updatedAt.time ]
+              ]
+          ]
+      ]
 
 renderNameCell :: forall m. State -> Boolean -> Volunteer -> H.ComponentHTML Action Slots m
 renderNameCell state isEditing volunteer =
@@ -319,8 +329,10 @@ renderNameCell state isEditing volunteer =
       [ HH.div
           [ HP.class_ (HH.ClassName "student-editable-value") ]
           [ HH.strong_ [ HH.text volunteer.name ]
-          , if isEditing then editIconButton "姓名" (BeginNameEdit volunteer)
-            else HH.text ""
+          , if isEditing then
+              editIconButton "姓名" (BeginNameEdit volunteer)
+            else
+              HH.text ""
           ]
       ]
 
@@ -336,10 +348,10 @@ renderAgeCell state isEditing volunteer =
               , HE.onValueChange SetDraftAge
               ]
               ( map
-                  (\age ->
-                    HH.option
-                      [ HP.value (show age) ]
-                      [ HH.text (ageToGradeLabel age) ]
+                  ( \age ->
+                      HH.option
+                        [ HP.value (show age) ]
+                        [ HH.text (ageToGradeLabel age) ]
                   )
                   (Array.range 5 15)
               )
@@ -350,8 +362,10 @@ renderAgeCell state isEditing volunteer =
       [ HH.div
           [ HP.class_ (HH.ClassName "student-editable-value") ]
           [ HH.text (ageToGradeLabel volunteer.age)
-          , if isEditing then editIconButton "年級" (BeginAgeEdit volunteer)
-            else HH.text ""
+          , if isEditing then
+              editIconButton "年級" (BeginAgeEdit volunteer)
+            else
+              HH.text ""
           ]
       ]
 
@@ -370,16 +384,20 @@ renderSeatCell state isEditing volunteer =
                   [ HH.text (showSeat state.draftSeat) ]
               , renderEditActions "座位" (SubmitSeat volunteer.id)
               ]
-          , if state.isSeatPickerOpen then renderSeatPicker state.draftSeat
-            else HH.text ""
+          , if state.isSeatPickerOpen then
+              renderSeatPicker state.draftSeat
+            else
+              HH.text ""
           ]
       ]
     else
       [ HH.div
           [ HP.class_ (HH.ClassName "student-editable-value") ]
           [ HH.text (showSeat (seatForPeriod state.selectedSeatPeriod volunteer))
-          , if isEditing then editIconButton "座位" (BeginSeatEdit volunteer)
-            else HH.text ""
+          , if isEditing then
+              editIconButton "座位" (BeginSeatEdit volunteer)
+            else
+              HH.text ""
           ]
       ]
 
@@ -397,8 +415,7 @@ isEditingField expected = case _ of
   Nothing -> false
 
 editIconButton :: forall m. String -> Action -> H.ComponentHTML Action Slots m
-editIconButton field action =
-  iconButton ("編輯" <> field) "✎" "student-field-edit-button" action
+editIconButton field action = iconButton ("編輯" <> field) "✎" "student-field-edit-button" action
 
 renderEditActions :: forall m. String -> Action -> H.ComponentHTML Action Slots m
 renderEditActions field submitAction =
@@ -437,18 +454,18 @@ renderSeatPicker selectedSeat =
     , HH.div
         [ HP.class_ (HH.ClassName "seat-grid") ]
         ( map
-            (\seat ->
-              HH.button
-                [ HP.classes
-                    ( [ HH.ClassName "seat-button" ]
-                        <> if selectedSeat == Just seat then
-                            [ HH.ClassName "seat-button-selected" ]
-                          else
-                            []
-                    )
-                , HE.onClick \_ -> SelectDraftSeat seat
-                ]
-                [ HH.text (show seat.row <> "-" <> show seat.col) ]
+            ( \seat ->
+                HH.button
+                  [ HP.classes
+                      ( [ HH.ClassName "seat-button" ]
+                          <> if selectedSeat == Just seat then
+                              [ HH.ClassName "seat-button-selected" ]
+                            else
+                              []
+                      )
+                  , HE.onClick \_ -> SelectDraftSeat seat
+                  ]
+                  [ HH.text (show seat.row <> "-" <> show seat.col) ]
             )
             seats
         )
@@ -500,11 +517,48 @@ renderDeleteDialog volunteer =
         ]
     ]
 
-handleAction
-  :: forall m
-   . MonadEffect m
-  => Action
-  -> H.HalogenM State Action Slots Output m Unit
+renderSummaryEditDialog :: forall m. Volunteer -> H.ComponentHTML Action Slots m
+renderSummaryEditDialog =
+  HH.div_
+    [ HH.div
+        [ HP.class_ (HH.ClassName "delete-confirm-backdrop") ]
+        []
+    , HH.div
+        [ HP.class_ (HH.ClassName "delete-confirm-dialog")
+        , HP.attr (HH.AttrName "role") "dialog"
+        , HP.attr (HH.AttrName "aria-modal") "true"
+        , HP.attr (HH.AttrName "aria-labelledby") "delete-confirm-title"
+        ]
+        [ HH.h3
+            [ HP.id "delete-confirm-title" ]
+            [ HH.text "警告！修改學年度將修改所有學生年齡" ]
+        , HH.p_ [ HH.text "所有學生年齡：" ]
+        , HH.div
+            [ HP.class_ (HH.ClassName "delete-confirm-actions") ]
+            [ HH.button
+                [ HP.class_ (HH.ClassName "delete-confirm-cancel")
+                , HE.onClick \_ -> CancelSummaryEdit
+                ]
+                [ HH.text "取消" ]
+            , HH.button
+                [ HP.class_ (HH.ClassName "delete-confirm-submit")
+                , HE.onClick \_ -> ConfirmSummaryEdit 1
+                ]
+                [ HH.text "+1" ]
+            , HH.button
+                [ HP.class_ (HH.ClassName "delete-confirm-submit")
+                , HE.onClick \_ -> ConfirmSummaryEdit (-1)
+                ]
+                [ HH.text "-1" ]
+            ]
+        ]
+    ]
+
+handleAction ::
+  forall m.
+  MonadEffect m =>
+  Action ->
+  H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   Initialize -> void $ H.subscribe (CloseSeatPicker <$ OutsideClick.outsideClickEmitter ".student-seat-editor")
   Receive input ->
@@ -529,6 +583,15 @@ handleAction = case _ of
       Just volunteer -> do
         H.modify_ _ { pendingDelete = Nothing }
         H.raise (DeleteRequested volunteer.id)
+  AskSummaryEdit ->
+    H.modify_
+      _
+        { pendingSummaryEdit = true
+        }
+  CancelSummaryEdit -> H.modify_ _ { pendingSummaryEdit = false }
+  ConfirmSummaryEdit delta -> do
+    H.modify_ _ { pendingSummaryEdit = false }
+    H.raise (UpdateSummary delta)
   SelectSeatPeriod period ->
     H.modify_
       _
@@ -579,7 +642,8 @@ handleAction = case _ of
   CancelFieldEdit -> H.modify_ _ { editingField = Nothing, isSeatPickerOpen = false }
   SubmitName id -> do
     state <- H.get
-    let name = String.trim state.draftName
+    let
+      name = String.trim state.draftName
     H.raise (UpdateNameRequested id name)
     H.modify_ _ { editingField = Nothing, isSeatPickerOpen = false }
   SubmitAge id -> do
