@@ -18,6 +18,7 @@ import Data.String.Common as String
 import Data.String.Pattern (Pattern(..), Replacement(..))
 import Data.Time.Duration (Milliseconds(..))
 import Domain.Activity (activityTypeLabel)
+import Domain.Volunteer (ageToGrade)
 import Domain.VolunteerHourDetail (VolunteerHourDetail)
 import Domain.VolunteerHourSummary (VolunteerHourSummary)
 import Effect (Effect)
@@ -300,7 +301,7 @@ renderSummary averageInteraction ranked =
               [ HP.class_ (HH.ClassName "summary-student-button")
               , HE.onClick \_ -> OpenDetail summary
               ]
-              [ HH.strong_ [ HH.text (summary.volunteerName <> "(" <> show (summary.age - 6) <> ")") ] ]
+              [ HH.strong_ [ HH.text (summary.volunteerName <> "(" <> show (ageToGrade summary.age) <> ")") ] ]
           ]
       , HH.td_
           [ renderPrPie
@@ -564,7 +565,7 @@ tableRowValues averageInteraction ranked =
 
     hasRatio = summary.teachingHours + summary.interactionHours > 0.0
   in
-    [ summary.volunteerName <> "(" <> show (summary.age - 6) <> ")"
+    [ summary.volunteerName <> "(" <> show (ageToGrade summary.age) <> ")"
     , formatHours summary.teachingHours
     , formatHours summary.interactionHours
     , if otherHours <= 0.0 then "" else formatHours otherHours

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import com.example.backend.domain.Volunteer;
 import com.example.backend.domain.SeatPeriod;
 import com.example.backend.dto.request.CreateVolunteerRequest;
+import com.example.backend.dto.request.UpdateAllVolunteerAgeRequest;
 import com.example.backend.dto.request.UpdateVolunteerAgeRequest;
 import com.example.backend.dto.request.UpdateVolunteerNameRequest;
 import com.example.backend.dto.request.UpdateVolunteerSeatRequest;
@@ -125,6 +126,25 @@ public class VolunteerController {
                 ApiResponse.success("刪除學生成功", null)
         );
     }
+
+    @PatchMapping("/volunteer/age")
+    public ResponseEntity<Response<Void>> updateAllVolunteerAge( // 修改學年 實際作為：所有學生年齡增減
+            @RequestBody UpdateAllVolunteerAgeRequest request
+    ) {
+        if (request.delta() == null || request.delta() != 1 && request.delta() != -1) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.fail("年齡調整值只能為 1 或 -1"));
+        }
+
+        int updatedRows = volunteerRepository.updateAllAge(request.delta());
+        if (updatedRows == 0) {
+            return ResponseEntity.ok(ApiResponse.success("目前沒有學生資料可供更新", null));
+        }
+
+        return ResponseEntity.ok(ApiResponse.success("修改學年(所有學生age)成功", null));
+    }
+
 
     @PatchMapping("/volunteer/{id}/name")
     public ResponseEntity<Response<Void>> updateVolunteerName(

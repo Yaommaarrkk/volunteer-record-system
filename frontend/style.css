@@ -212,7 +212,7 @@ body {
 .list-heading {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: space-between; /* 元素靠左右兩側 */
   gap: 24px;
 }
 
@@ -774,6 +774,11 @@ body:has(.daily-activity-page) {
 
 .list-heading p {
   font-size: 13px;
+}
+.student-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .student-count {

@@ -699,7 +699,7 @@ handleAction = case _ of
   Submit -> do
     state <- H.get
     let dateError = validateDate state.defaultYear state.dateText
-    let hoursError = validateHours state.hoursText
+    let hoursError = validateHours state.hoursText -- validateHours會檢查""或是格式不對
     let participantError = if Array.null state.selectedVolunteerIds then Just "請重新選擇至少一位參與學生" else Nothing
     H.modify_
       _

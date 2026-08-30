@@ -1,7 +1,6 @@
 module Page.MasterData where
 
 import Prelude
-
 import Affjax.RequestBody as RequestBody
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.Web as AX
@@ -26,7 +25,8 @@ import Widget.ActivityList as ActivityList
 import Widget.StudentForm as StudentForm
 import Widget.StudentList as StudentList
 
-type Slot id = forall query. H.Slot query Output id
+type Slot id
+  = forall query. H.Slot query Output id
 
 _studentForm = Proxy :: Proxy "studentFormSlot"
 
@@ -43,45 +43,46 @@ type Slots
     , activityListSlot :: ActivityList.Slot Unit
     )
 
-type Input = MasterDataType
+type Input
+  = MasterDataType
 
-type State =
-  { masterDataType :: MasterDataType
-  , volunteers :: Array Volunteer
-  , activities :: Array Activity
-  , isLoading :: Boolean
-  , loadError :: Maybe String
-  , isSubmitting :: Boolean
-  , notice :: Maybe Notice
-  , noticeVersion :: Int
-  }
+type State
+  = { masterDataType :: MasterDataType
+    , volunteers :: Array Volunteer
+    , activities :: Array Activity
+    , isLoading :: Boolean
+    , loadError :: Maybe String
+    , isSubmitting :: Boolean
+    , notice :: Maybe Notice
+    , noticeVersion :: Int
+    }
 
-type VolunteersResponse =
-  { success :: Boolean
-  , message :: String
-  , data :: Array Volunteer
-  }
+type VolunteersResponse
+  = { success :: Boolean
+    , message :: String
+    , data :: Array Volunteer
+    }
 
-type ActivitiesResponse =
-  { success :: Boolean
-  , message :: String
-  , data :: Array Activity
-  }
+type ActivitiesResponse
+  = { success :: Boolean
+    , message :: String
+    , data :: Array Activity
+    }
 
-type MutationResponse =
-  { success :: Boolean
-  , message :: String
-  , data :: Maybe String
-  }
+type MutationResponse
+  = { success :: Boolean
+    , message :: String
+    , data :: Maybe String
+    }
 
 data NoticeKind
   = SuccessNotice
   | ErrorNotice
 
-type Notice =
-  { kind :: NoticeKind
-  , message :: String
-  }
+type Notice
+  = { kind :: NoticeKind
+    , message :: String
+    }
 
 data Action
   = Initialize
@@ -95,7 +96,8 @@ data Action
   | ActivityListOutput ActivityList.Output
   | HideNotice Int
 
-data Output = OutputUnit
+data Output
+  = OutputUnit
 
 initialState :: Input -> State
 initialState masterDataType =
@@ -202,11 +204,11 @@ renderNotice = case _ of
       ]
       [ HH.text notice.message ]
 
-handleAction
-  :: forall m
-   . MonadAff m
-  => Action
-  -> H.HalogenM State Action Slots Output m Unit
+handleAction ::
+  forall m.
+  MonadAff m =>
+  Action ->
+  H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   Initialize -> handleAction LoadCurrentData
   LoadCurrentData -> do
@@ -230,22 +232,19 @@ handleAction = case _ of
           }
       handleAction LoadCurrentData
   VolunteersLoaded result -> case result of
-    Left message ->
-      H.modify_ _ { isLoading = false, loadError = Just message }
-    Right volunteers ->
-      H.modify_ _ { volunteers = volunteers, isLoading = false, loadError = Nothing }
+    Left message -> H.modify_ _ { isLoading = false, loadError = Just message }
+    Right volunteers -> H.modify_ _ { volunteers = volunteers, isLoading = false, loadError = Nothing }
   ActivitiesLoaded result -> case result of
-    Left message ->
-      H.modify_ _ { isLoading = false, loadError = Just message }
-    Right activities ->
-      H.modify_ _ { activities = activities, isLoading = false, loadError = Nothing }
+    Left message -> H.modify_ _ { isLoading = false, loadError = Just message }
+    Right activities -> H.modify_ _ { activities = activities, isLoading = false, loadError = Nothing }
   StudentFormOutput (StudentForm.SubmitVolunteer request) -> do
     H.modify_ _ { isSubmitting = true, notice = Nothing }
-    result <- H.liftAff
-      $ sequential
-      $ (\postResult _ -> postResult)
-          <$> parallel (createVolunteer request)
-          <*> parallel (delay (Milliseconds 1000.0))
+    result <-
+      H.liftAff
+        $ sequential
+        $ (\postResult _ -> postResult)
+        <$> parallel (createVolunteer request)
+        <*> parallel (delay (Milliseconds 1000.0))
     case result of
       Left message -> do
         H.modify_ _ { isSubmitting = false }
@@ -275,19 +274,27 @@ handleAction = case _ of
         showNotice SuccessNotice message
         volunteersResult <- H.liftAff loadVolunteers
         handleAction (VolunteersLoaded volunteersResult)
-  StudentListOutput (StudentList.UpdateNameRequested id name) ->
-    handleStudentUpdate (updateVolunteerName id name)
-  StudentListOutput (StudentList.UpdateAgeRequested id age) ->
-    handleStudentUpdate (updateVolunteerAge id age)
-  StudentListOutput (StudentList.UpdateSeatRequested id period seat) ->
-    handleStudentUpdate (updateVolunteerSeat id period seat)
+  StudentListOutput (StudentList.UpdateAcademicYearRequested delta) -> do
+    H.modify_ _ { isLoading = true, loadError = Nothing }
+    result <- H.liftAff (updateAllVolunteerAge delta)
+    case result of
+      Left message -> do
+        H.modify_ _ { isLoading = false }
+        showNotice ErrorNotice message
+      Right message -> do
+        showNotice SuccessNotice message
+        handleAction LoadCurrentData -- 刷新整個表(偷懶做法)
+  StudentListOutput (StudentList.UpdateNameRequested id name) -> handleStudentUpdate (updateVolunteerName id name)
+  StudentListOutput (StudentList.UpdateAgeRequested id age) -> handleStudentUpdate (updateVolunteerAge id age)
+  StudentListOutput (StudentList.UpdateSeatRequested id period seat) -> handleStudentUpdate (updateVolunteerSeat id period seat)
   ActivityFormOutput (ActivityForm.SubmitActivity request) -> do
     H.modify_ _ { isSubmitting = true, notice = Nothing }
-    result <- H.liftAff
-      $ sequential
-      $ (\postResult _ -> postResult)
-          <$> parallel (createActivity request)
-          <*> parallel (delay (Milliseconds 1000.0))
+    result <-
+      H.liftAff
+        $ sequential
+        $ (\postResult _ -> postResult)
+        <$> parallel (createActivity request)
+        <*> parallel (delay (Milliseconds 1000.0))
     case result of
       Left message -> do
         H.modify_ _ { isSubmitting = false }
@@ -317,42 +324,40 @@ handleAction = case _ of
         showNotice SuccessNotice message
         activitiesResult <- H.liftAff loadActivities
         handleAction (ActivitiesLoaded activitiesResult)
-  ActivityListOutput (ActivityList.UpdateNameRequested id name) ->
-    handleActivityUpdate (updateActivityName id name)
-  ActivityListOutput (ActivityList.UpdateTypeRequested id defaultType) ->
-    handleActivityUpdate (updateActivityType id defaultType)
-  ActivityListOutput (ActivityList.ReorderRequested defaultType activityIds) ->
-    handleActivityUpdate (updateActivityOrder defaultType activityIds)
-  ActivityListOutput (ActivityList.UpdateColorRequested defaultType tagColor) ->
-    handleActivityUpdate (updateActivityColor defaultType tagColor)
+  ActivityListOutput (ActivityList.UpdateNameRequested id name) -> handleActivityUpdate (updateActivityName id name)
+  ActivityListOutput (ActivityList.UpdateTypeRequested id defaultType) -> handleActivityUpdate (updateActivityType id defaultType)
+  ActivityListOutput (ActivityList.ReorderRequested defaultType activityIds) -> handleActivityUpdate (updateActivityOrder defaultType activityIds)
+  ActivityListOutput (ActivityList.UpdateColorRequested defaultType tagColor) -> handleActivityUpdate (updateActivityColor defaultType tagColor)
   HideNotice version -> do
     state <- H.get
     when (state.noticeVersion == version)
       $ H.modify_ _ { notice = Nothing }
 
-showNotice
-  :: forall m
-   . MonadAff m
-  => NoticeKind
-  -> String
-  -> H.HalogenM State Action Slots Output m Unit
+showNotice ::
+  forall m.
+  MonadAff m =>
+  NoticeKind ->
+  String ->
+  H.HalogenM State Action Slots Output m Unit
 showNotice kind message = do
   state <- H.get
-  let version = state.noticeVersion + 1
+  let
+    version = state.noticeVersion + 1
   H.modify_
     _
       { notice = Just { kind, message }
       , noticeVersion = version
       }
-  void $ H.fork do
-    H.liftAff (delay (Milliseconds 3000.0))
-    handleAction (HideNotice version)
+  void
+    $ H.fork do
+        H.liftAff (delay (Milliseconds 3000.0))
+        handleAction (HideNotice version)
 
-handleStudentUpdate
-  :: forall m
-   . MonadAff m
-  => Aff (Either String String)
-  -> H.HalogenM State Action Slots Output m Unit
+handleStudentUpdate ::
+  forall m.
+  MonadAff m =>
+  Aff (Either String String) ->
+  H.HalogenM State Action Slots Output m Unit
 handleStudentUpdate request = do
   H.modify_ _ { isLoading = true, loadError = Nothing }
   result <- H.liftAff request
@@ -365,11 +370,11 @@ handleStudentUpdate request = do
       volunteersResult <- H.liftAff loadVolunteers
       handleAction (VolunteersLoaded volunteersResult)
 
-handleActivityUpdate
-  :: forall m
-   . MonadAff m
-  => Aff (Either String String)
-  -> H.HalogenM State Action Slots Output m Unit
+handleActivityUpdate ::
+  forall m.
+  MonadAff m =>
+  Aff (Either String String) ->
+  H.HalogenM State Action Slots Output m Unit
 handleActivityUpdate request = do
   H.modify_ _ { isLoading = true, loadError = Nothing }
   result <- H.liftAff request
@@ -414,12 +419,20 @@ createVolunteer volunteerRq = case jsonParser (writeJSON volunteerRq) of
       Right response -> case readJSON response.body of
         Left errors -> Left ("新增學生回應格式錯誤：" <> show errors)
         Right (decoded :: MutationResponse) ->
-          if decoded.success then Right decoded.message
-          else Left decoded.message
+          if decoded.success then
+            Right decoded.message
+          else
+            Left decoded.message
 
 createActivity :: ActivityForm.CreateActivityRequest -> Aff (Either String String)
-createActivity activityRequest =
-  postMutation (apiUrl "/api/activity") (writeJSON activityRequest) "新增活動"
+createActivity activityRequest = postMutation (apiUrl "/api/activity") (writeJSON activityRequest) "新增活動"
+
+updateAllVolunteerAge :: Int -> Aff (Either String String)
+updateAllVolunteerAge delta =
+  patchMutation
+    (apiUrl "/api/volunteer/age") -- delta為1或-1
+    (writeJSON { delta })
+    "修改全部學生年齡"
 
 deleteVolunteer :: Int -> Aff (Either String String)
 deleteVolunteer id = do
@@ -432,8 +445,10 @@ deleteVolunteer id = do
     Right response -> case readJSON response.body of
       Left errors -> Left ("刪除學生回應格式錯誤：" <> show errors)
       Right (decoded :: MutationResponse) ->
-        if decoded.success then Right decoded.message
-        else Left decoded.message
+        if decoded.success then
+          Right decoded.message
+        else
+          Left decoded.message
 
 deleteActivity :: Int -> Aff (Either String String)
 deleteActivity id = do
@@ -445,15 +460,17 @@ deleteActivity id = do
 
 updateVolunteerName :: Int -> String -> Aff (Either String String)
 updateVolunteerName id name =
-  patchVolunteer
+  patchMutation
     (apiUrl ("/api/volunteer/" <> show id <> "/name"))
     (writeJSON { name })
+    "修改學生名稱"
 
 updateVolunteerAge :: Int -> Int -> Aff (Either String String)
 updateVolunteerAge id age =
-  patchVolunteer
+  patchMutation
     (apiUrl ("/api/volunteer/" <> show id <> "/age"))
     (writeJSON { age })
+    "修改學生年齡"
 
 updateVolunteerSeat :: Int -> SeatPeriod -> Maybe Seat -> Aff (Either String String)
 updateVolunteerSeat id period seat =
@@ -462,15 +479,16 @@ updateVolunteerSeat id period seat =
       Nothing -> { row: Nothing, col: Nothing }
       Just selectedSeat -> { row: Just selectedSeat.row, col: Just selectedSeat.col }
   in
-    patchVolunteer
+    patchMutation
       ( apiUrl
           ( "/api/volunteer/"
-          <> show id
-          <> "/seat/"
-          <> seatPeriodToApi period
+              <> show id
+              <> "/seat/"
+              <> seatPeriodToApi period
           )
       )
       (writeJSON request)
+      "修改學生座位"
 
 updateActivityName :: Int -> String -> Aff (Either String String)
 updateActivityName id name =
@@ -500,19 +518,6 @@ updateActivityColor defaultType tagColor =
     (writeJSON { tagColor })
     "修改活動類型顏色"
 
-patchVolunteer :: String -> String -> Aff (Either String String)
-patchVolunteer url body = case jsonParser body of
-  Left error -> pure (Left error)
-  Right json -> do
-    result <- AX.patch ResponseFormat.string url (RequestBody.json json)
-    pure case result of
-      Left error -> Left (AX.printError error)
-      Right response -> case readJSON response.body of
-        Left errors -> Left ("修改學生回應格式錯誤：" <> show errors)
-        Right (decoded :: MutationResponse) ->
-          if decoded.success then Right decoded.message
-          else Left decoded.message
-
 postMutation :: String -> String -> String -> Aff (Either String String)
 postMutation url body operation = case jsonParser body of
   Left error -> pure (Left error)
@@ -534,14 +539,16 @@ putMutation url body operation = case jsonParser body of
     result <- AX.put ResponseFormat.string url (Just (RequestBody.json json))
     pure (decodeMutationResponse operation result)
 
-decodeMutationResponse
-  :: String
-  -> Either AX.Error (AX.Response String)
-  -> Either String String
+decodeMutationResponse ::
+  String ->
+  Either AX.Error (AX.Response String) ->
+  Either String String
 decodeMutationResponse operation = case _ of
   Left error -> Left (AX.printError error)
   Right response -> case readJSON response.body of
     Left errors -> Left (operation <> "回應格式錯誤：" <> show errors)
     Right (decoded :: MutationResponse) ->
-      if decoded.success then Right decoded.message
-      else Left decoded.message
+      if decoded.success then
+        Right decoded.message
+      else
+        Left decoded.message

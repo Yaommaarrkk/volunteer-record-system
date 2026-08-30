@@ -6,6 +6,7 @@ module Domain.Volunteer
   , ageToGradeLabel
   , displayVolunteer
   , formatUpdatedAt
+  , ageToGrade
   , getGrade
   , seatForPeriod
   , seatPeriodToApi
@@ -71,8 +72,11 @@ ageToGradeLabel = case _ of
   15 -> "國三"
   _ -> "未知年級"
 
+ageToGrade :: Int -> Int
+ageToGrade age = age - 6
+
 getGrade :: Volunteer -> Int
-getGrade volunteer = volunteer.age - 6
+getGrade volunteer = ageToGrade volunteer.age
 
 showSeat :: Maybe Seat -> String
 showSeat = case _ of
