@@ -128,7 +128,7 @@ public class VolunteerController {
     }
 
     @PatchMapping("/volunteer/age")
-    public ResponseEntity<Response<Void>> updateAllVolunteerAge(
+    public ResponseEntity<Response<Void>> updateAllVolunteerAge( // 修改學年 實際作為：所有學生年齡增減
             @RequestBody UpdateAllVolunteerAgeRequest request
     ) {
         if (request.delta() == null || request.delta() != 1 && request.delta() != -1) {
@@ -139,9 +139,7 @@ public class VolunteerController {
 
         int updatedRows = volunteerRepository.updateAllAge(request.delta());
         if (updatedRows == 0) {
-            return ResponseEntity
-                    .status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.fail("沒有學生資料"));
+            return ResponseEntity.ok(ApiResponse.success("目前沒有學生資料可供更新", null));
         }
 
         return ResponseEntity.ok(ApiResponse.success("修改學年(所有學生age)成功", null));
@@ -149,7 +147,7 @@ public class VolunteerController {
 
 
     @PatchMapping("/volunteer/{id}/name")
-    public ResponseEntity<Response<Void>> updateVolunteerName( // 修改學年 實際作為：所有學生年齡增減
+    public ResponseEntity<Response<Void>> updateVolunteerName(
             @PathVariable Integer id,
             @RequestBody UpdateVolunteerNameRequest request
     ) {
@@ -164,7 +162,7 @@ public class VolunteerController {
             return volunteerNotFound(id);
         }
 
-        return ResponseEntity.ok(ApiResponse.success("修改年級成功", null));
+        return ResponseEntity.ok(ApiResponse.success("修改姓名成功", null));
     }
 
     @PatchMapping("/volunteer/{id}/age")
