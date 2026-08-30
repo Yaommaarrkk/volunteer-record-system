@@ -44,6 +44,7 @@ type State
     , draftSeat :: Maybe Seat
     , isSeatPickerOpen :: Boolean
     , pendingDelete :: Maybe Volunteer
+    , pendingAcademicYear :: Boolean
     }
 
 data SortMode
@@ -65,7 +66,9 @@ data Action
   | AskDelete Volunteer
   | CancelDelete
   | ConfirmDelete
-  | AskSummaryEdit
+  | AskAcademicYearEdit
+  | CancelAcademicYearEdit
+  | ConfirmAcademicYearEdit Int
   | SelectSeatPeriod SeatPeriod
   | SelectSortMode SortMode
   | ToggleVolunteerEdit Int
@@ -86,7 +89,7 @@ data Action
 data Output
   = RetryRequested
   | DeleteRequested Int
-  | UpdateSummary Int
+  | UpdateAcademicYearRequested Int
   | UpdateNameRequested Int String
   | UpdateAgeRequested Int Int
   | UpdateSeatRequested Int SeatPeriod (Maybe Seat)
@@ -108,6 +111,7 @@ component =
           , draftSeat: Nothing
           , isSeatPickerOpen: false
           , pendingDelete: Nothing
+          , pendingAcademicYear: false
           }
     , render
     , eval:
@@ -123,12 +127,10 @@ render :: forall m. State -> H.ComponentHTML Action Slots m
 render state =
   HH.section
     [ HP.class_ (HH.ClassName "student-list-card") ]
-    [ case state.pendingDelete of
+    [ case state.pendingDelete of -- 懸浮視窗：刪除志工
         Nothing -> HH.text ""
         Just volunteer -> renderDeleteDialog volunteer
-    , case state.pendingSummaryEdit of
-        Nothing -> HH.text ""
-        Just volunteer -> renderSummaryEditDialog
+    , if state.pendingAcademicYear then renderAcademicYearDialog else HH.text "" -- 懸浮視窗：改學年度
     , HH.div
         [ HP.class_ (HH.ClassName "list-heading") ]
         [ HH.div_
@@ -142,7 +144,7 @@ render state =
                 [ HH.text (show (Array.length state.volunteers) <> " 位學生") ]
             , HH.button
                 [ HP.class_ (HH.ClassName "student-delete-button")
-                , HE.onClick \_ -> AskSummaryEdit
+                , HE.onClick \_ -> AskAcademicYearEdit
                 ]
                 [ HH.text "修改學年" ]
             ]
@@ -517,8 +519,8 @@ renderDeleteDialog volunteer =
         ]
     ]
 
-renderSummaryEditDialog :: forall m. Volunteer -> H.ComponentHTML Action Slots m
-renderSummaryEditDialog =
+renderAcademicYearDialog :: forall m. H.ComponentHTML Action Slots m
+renderAcademicYearDialog =
   HH.div_
     [ HH.div
         [ HP.class_ (HH.ClassName "delete-confirm-backdrop") ]
@@ -537,17 +539,17 @@ renderSummaryEditDialog =
             [ HP.class_ (HH.ClassName "delete-confirm-actions") ]
             [ HH.button
                 [ HP.class_ (HH.ClassName "delete-confirm-cancel")
-                , HE.onClick \_ -> CancelSummaryEdit
+                , HE.onClick \_ -> CancelAcademicYearEdit
                 ]
                 [ HH.text "取消" ]
             , HH.button
                 [ HP.class_ (HH.ClassName "delete-confirm-submit")
-                , HE.onClick \_ -> ConfirmSummaryEdit 1
+                , HE.onClick \_ -> ConfirmAcademicYearEdit 1
                 ]
                 [ HH.text "+1" ]
             , HH.button
                 [ HP.class_ (HH.ClassName "delete-confirm-submit")
-                , HE.onClick \_ -> ConfirmSummaryEdit (-1)
+                , HE.onClick \_ -> ConfirmAcademicYearEdit (-1)
                 ]
                 [ HH.text "-1" ]
             ]
@@ -583,15 +585,15 @@ handleAction = case _ of
       Just volunteer -> do
         H.modify_ _ { pendingDelete = Nothing }
         H.raise (DeleteRequested volunteer.id)
-  AskSummaryEdit ->
+  AskAcademicYearEdit ->
     H.modify_
       _
-        { pendingSummaryEdit = true
+        { pendingAcademicYear = true
         }
-  CancelSummaryEdit -> H.modify_ _ { pendingSummaryEdit = false }
-  ConfirmSummaryEdit delta -> do
-    H.modify_ _ { pendingSummaryEdit = false }
-    H.raise (UpdateSummary delta)
+  CancelAcademicYearEdit -> H.modify_ _ { pendingAcademicYear = false }
+  ConfirmAcademicYearEdit delta -> do
+    H.modify_ _ { pendingAcademicYear = false }
+    H.raise (UpdateAcademicYearRequested delta)
   SelectSeatPeriod period ->
     H.modify_
       _

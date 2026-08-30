@@ -159,6 +159,15 @@ public class VolunteerRepository {
         return jdbcTemplate.update(sql, id);
     }
 
+    public int updateAllAge(int delta) {
+        String sql = """
+            UPDATE volunteer
+            SET age = age + ?
+            """;
+
+        return jdbcTemplate.update(sql, delta);
+    }
+
     public int updateName(Integer id, String name) {
         String sql = """
             UPDATE volunteer
