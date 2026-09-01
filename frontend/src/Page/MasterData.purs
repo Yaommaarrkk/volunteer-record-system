@@ -11,7 +11,8 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
 import Domain.Activity (Activity)
-import Domain.Volunteer (Seat, SeatPeriod, Volunteer, seatPeriodToApi)
+import Domain.Volunteer (Volunteer)
+import Domain.Seat (Seat, SeatPeriodType, toApiValue)
 import Effect.Aff (Aff, delay)
 import Effect.Aff.Class (class MonadAff)
 import Halogen as H
@@ -472,7 +473,7 @@ updateVolunteerAge id age =
     (writeJSON { age })
     "修改學生年齡"
 
-updateVolunteerSeat :: Int -> SeatPeriod -> Maybe Seat -> Aff (Either String String)
+updateVolunteerSeat :: Int -> SeatPeriodType -> Maybe Seat -> Aff (Either String String)
 updateVolunteerSeat id period seat =
   let
     request = case seat of
@@ -484,7 +485,7 @@ updateVolunteerSeat id period seat =
           ( "/api/volunteer/"
               <> show id
               <> "/seat/"
-              <> seatPeriodToApi period
+              <> toApiValue period
           )
       )
       (writeJSON request)

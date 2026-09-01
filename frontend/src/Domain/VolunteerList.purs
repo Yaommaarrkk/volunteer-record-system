@@ -16,7 +16,8 @@ import Data.Array as Array
 import Data.Foldable (intercalate)
 import Data.Maybe (Maybe(..))
 import Data.Ordering (Ordering(..))
-import Domain.Volunteer (SeatPeriod(..), Volunteer, getGrade, seatForPeriod, showSeat)
+import Domain.Volunteer (Volunteer, getGrade, seatForPeriod, showSeat)
+import Domain.Seat (SeatPeriodType(..), toApiValue)
 
 newtype VolunteerList
   = VolunteerList (Array Volunteer)

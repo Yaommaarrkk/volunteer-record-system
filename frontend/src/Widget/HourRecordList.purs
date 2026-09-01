@@ -12,7 +12,8 @@ import Data.Maybe (Maybe(..))
 import Data.String.Common as String
 import Domain.Activity (Activity, activityTypeLabel)
 import Domain.HourRecord (CopiedHourRecord, HourRecord)
-import Domain.Volunteer (Seat, SeatPeriod(..), Volunteer, getGrade, seatForPeriod, seatPeriodToApi, formatUpdatedAt)
+import Domain.Volunteer (Volunteer, getGrade, seatForPeriod, formatUpdatedAt)
+import Domain.Seat (Seat, SeatPeriodType(..), SeatPeriod, seatPeriods, toApiValue, fromApiValue_, seatsForPeriod)
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import Halogen as H
@@ -52,7 +53,7 @@ type State
     , filterActivityIds :: Array Int
     , draftFilterVolunteerIds :: Array Int
     , draftFilterActivityIds :: Array Int
-    , filterSeatPeriod :: SeatPeriod
+    , filterSeatPeriod :: SeatPeriodType
     , isVolunteerFilterOpen :: Boolean
     , isFilterOtherStudentsOpen :: Boolean
     , isActivityFilterOpen :: Boolean
@@ -477,7 +478,7 @@ handleAction = case _ of
     H.modify_ \state ->
       state
         { draftFilterActivityIds = toggleId id state.draftFilterActivityIds }
-  SelectFilterSeatPeriod value -> H.modify_ _ { filterSeatPeriod = seatPeriodFromApi value, isFilterOtherStudentsOpen = false }
+  SelectFilterSeatPeriod value -> H.modify_ _ { filterSeatPeriod = fromApiValue_ value, isFilterOtherStudentsOpen = false }
   ApplyVolunteerFilter -> do
     state <- H.get
     H.modify_
@@ -534,12 +535,10 @@ renderVolunteerFilter state =
                 [ HP.class_ (HH.ClassName "seat-period-select") ]
                 [ HH.span_ [ HH.text "選學期" ]
                 , HH.select
-                    [ HP.value (seatPeriodToApi state.filterSeatPeriod)
+                    [ HP.value (toApiValue state.filterSeatPeriod)
                     , HE.onValueChange SelectFilterSeatPeriod
                     ]
-                    [ HH.option [ HP.value "YEAR_114_SECOND_SEMESTER" ] [ HH.text "114下" ]
-                    , HH.option [ HP.value "YEAR_115_SUMMER" ] [ HH.text "115暑假" ]
-                    ]
+                    (map seatPeriodOption seatPeriods)
                 ]
             , HH.div
                 [ HP.class_ (HH.ClassName "participant-seat-stage") ]
@@ -565,11 +564,16 @@ renderVolunteerFilter state =
                     , HH.button [ HP.class_ (HH.ClassName "seat-clear-button"), HE.onClick \_ -> ClearVolunteerFilter ] [ HH.text "清除" ]
                     ]
                 ]
-            , HH.div [ HP.class_ (HH.ClassName "seat-grid participant-seat-grid") ] (map (renderFilterSeat state) seats)
+            , HH.div [ HP.class_ (HH.ClassName "seat-grid participant-seat-grid") ] (map (renderFilterSeat state) (seatsForPeriod state.filterSeatPeriod))
             ]
         else
           HH.text ""
       ]
+  where
+  seatPeriodOption period =
+    HH.option
+      [ HP.value period.apiValue ]
+      [ HH.text period.displayName ]
 
 renderActivityFilter :: forall m. State -> H.ComponentHTML Action Slots m
 renderActivityFilter state =
@@ -668,16 +672,5 @@ toggleId id ids = if Array.elem id ids then Array.filter (_ /= id) ids else Arra
 volunteerWithGrade :: Volunteer -> String
 volunteerWithGrade volunteer = volunteer.name <> "(" <> show (getGrade volunteer) <> ")"
 
-seatPeriodFromApi :: String -> SeatPeriod
-seatPeriodFromApi = case _ of
-  "YEAR_115_SUMMER" -> Year115Summer
-  _ -> Year114SecondSemester
-
-seats :: Array Seat
-seats = do
-  row <- Array.range 1 5
-  col <- Array.range 1 4
-  pure { row, col }
-
-volunteerAtSeat :: SeatPeriod -> Seat -> Array Volunteer -> Maybe Volunteer
+volunteerAtSeat :: SeatPeriodType -> Seat -> Array Volunteer -> Maybe Volunteer
 volunteerAtSeat period seat = Array.find (\volunteer -> seatForPeriod period volunteer == Just seat)

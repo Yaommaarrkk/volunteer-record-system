@@ -6,13 +6,13 @@ module Widget.StudentForm
   ) where
 
 import Prelude
-
 import Data.Array as Array
 import Data.Int as Int
 import Data.Maybe (Maybe(..))
 import Data.String.Common as String
 import Domain.EducationLevel (EducationLevel(..), educationLevelToApi)
-import Domain.Volunteer (Seat, SeatAssignment, SeatPeriod(..), ageToGradeLabel, seatPeriodToApi, showSeat)
+import Domain.Volunteer (SeatAssignment, ageToGradeLabel, showSeat)
+import Domain.Seat (Seat, SeatPeriodType(..), seatsForPeriod, toApiValue, displayName, deltaCol)
 import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
@@ -20,42 +20,45 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Widget.OutsideClick as OutsideClick
 
-type Slot id = forall query. H.Slot query Output id
+type Slot id
+  = forall query. H.Slot query Output id
 
 type Slots :: Row Type
-type Slots = ()
+type Slots
+  = ()
 
-type Input =
-  { isSubmitting :: Boolean
-  }
+type Input
+  = { isSubmitting :: Boolean
+    }
 
-type CreateVolunteerRequest =
-  { educationLevel :: String
-  , name :: String
-  , age :: Int
-  , seats :: Array SeatAssignment
-  }
+type CreateVolunteerRequest
+  = { educationLevel :: String
+    , name :: String
+    , age :: Int
+    , seats :: Array SeatAssignment
+    }
 
-type State =
-  { educationLevel :: EducationLevel
-  , name :: String
-  , age :: Int
-  , seat114SecondSemester :: Maybe Seat
-  , seat115Summer :: Maybe Seat
-  , nameError :: Maybe String
-  , isSubmitting :: Boolean
-  , openSeatPicker :: Maybe SeatPeriod
-  }
+type State
+  = { educationLevel :: EducationLevel
+    , name :: String
+    , age :: Int
+    , seat114SecondSemester :: Maybe Seat
+    , seat115Summer :: Maybe Seat
+    , seat115FirstSemester :: Maybe Seat
+    , nameError :: Maybe String
+    , isSubmitting :: Boolean
+    , openSeatPicker :: Maybe SeatPeriodType
+    }
 
 data Action
   = Initialize
   | SetEducationLevel String
   | SetName String
   | SetAge String
-  | ToggleSeatPicker SeatPeriod
+  | ToggleSeatPicker SeatPeriodType
   | CloseSeatPicker
-  | ClearSeat SeatPeriod
-  | SelectSeat SeatPeriod Seat
+  | ClearSeat SeatPeriodType
+  | SelectSeat SeatPeriodType Seat
   | Submit
   | Receive Input
 
@@ -69,6 +72,7 @@ initialState input =
   , age: 7
   , seat114SecondSemester: Nothing
   , seat115Summer: Nothing
+  , seat115FirstSemester: Nothing
   , nameError: Nothing
   , isSubmitting: input.isSubmitting
   , openSeatPicker: Nothing
@@ -130,16 +134,17 @@ render state =
                 , HE.onValueChange SetAge
                 ]
                 ( map
-                    (\age ->
-                      HH.option
-                        [ HP.value (show age) ]
-                        [ HH.text (ageToGradeLabel age) ]
+                    ( \age ->
+                        HH.option
+                          [ HP.value (show age) ]
+                          [ HH.text (ageToGradeLabel age) ]
                     )
                     (Array.range 5 15)
                 )
             )
-        , seatField "114下座位" Year114SecondSemester state.seat114SecondSemester state.openSeatPicker
-        , seatField "115暑假座位" Year115Summer state.seat115Summer state.openSeatPicker
+        , seatField Year114SecondSemester state.seat114SecondSemester state.openSeatPicker
+        , seatField Year115Summer state.seat115Summer state.openSeatPicker
+        , seatField Year115FirstSemester state.seat115FirstSemester state.openSeatPicker
         , HH.button
             [ HP.class_ (HH.ClassName "student-submit")
             , HP.disabled state.isSubmitting
@@ -154,11 +159,11 @@ render state =
         ]
     ]
 
-formField
-  :: forall m
-   . String
-  -> H.ComponentHTML Action Slots m
-  -> H.ComponentHTML Action Slots m
+formField ::
+  forall m.
+  String ->
+  H.ComponentHTML Action Slots m ->
+  H.ComponentHTML Action Slots m
 formField label control =
   HH.label
     [ HP.class_ (HH.ClassName "form-field") ]
@@ -166,14 +171,13 @@ formField label control =
     , control
     ]
 
-seatField
-  :: forall m
-   . String
-  -> SeatPeriod
-  -> Maybe Seat
-  -> Maybe SeatPeriod
-  -> H.ComponentHTML Action Slots m
-seatField label period selectedSeat openSeatPicker =
+seatField ::
+  forall m.
+  SeatPeriodType ->
+  Maybe Seat ->
+  Maybe SeatPeriodType ->
+  H.ComponentHTML Action Slots m
+seatField period selectedSeat openSeatPicker =
   HH.div
     [ HP.classes
         ( [ HH.ClassName "form-field"
@@ -185,15 +189,23 @@ seatField label period selectedSeat openSeatPicker =
                 []
         )
     ]
-    [ HH.span_ [ HH.text label ]
+    [ HH.span_ [ HH.text (displayName period <> "座位") ]
     , HH.button
         [ HP.class_ (HH.ClassName "seat-picker-trigger")
         , HE.onClick \_ -> ToggleSeatPicker period
         ]
         [ HH.text (showSeat selectedSeat) ]
     , HH.div
-        [ HP.class_ (HH.ClassName "seat-picker") ]
-        [ HH.p_ [ HH.text "選擇座位（5 排 × 4 列）" ]
+        [ HP.classes
+            [ HH.ClassName "seat-picker"
+            , HH.ClassName
+                $ if deltaCol period == 3 then
+                    "seat-picker-col3"
+                  else
+                    ""
+            ]
+        ]
+        [ HH.p_ [ HH.text "選擇座位" ]
         , HH.div
             [ HP.class_ (HH.ClassName "seat-stage") ]
             [ HH.span
@@ -209,37 +221,37 @@ seatField label period selectedSeat openSeatPicker =
                 [ HH.text "清除" ]
             ]
         , HH.div
-            [ HP.class_ (HH.ClassName "seat-grid") ]
+            [ HP.classes
+                [ HH.ClassName "seat-grid"
+                , HH.ClassName
+                    $ if deltaCol period == 3 then
+                        "seat-grid-3"
+                      else
+                        ""
+                ]
+            ]
             ( map
-                (\seat ->
-                  HH.button
-                    [ HP.class_ (HH.ClassName "seat-button")
-                    , HE.onClick \_ -> SelectSeat period seat
-                    ]
-                    [ HH.text (show seat.row <> "-" <> show seat.col) ]
+                ( \seat ->
+                    HH.button
+                      [ HP.class_ (HH.ClassName "seat-button")
+                      , HE.onClick \_ -> SelectSeat period seat
+                      ]
+                      [ HH.text (show seat.row <> "-" <> show seat.col) ]
                 )
-                seats
+                (seatsForPeriod period)
             )
         ]
     ]
 
-seats :: Array Seat
-seats = do
-  row <- Array.range 1 5
-  col <- Array.range 1 4
-  pure { row, col }
-
-handleAction
-  :: forall m
-   . MonadEffect m
-  => Action
-  -> H.HalogenM State Action Slots Output m Unit
+handleAction ::
+  forall m.
+  MonadEffect m =>
+  Action ->
+  H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   Initialize -> void $ H.subscribe (CloseSeatPicker <$ OutsideClick.outsideClickEmitter ".seat-field")
-  SetEducationLevel value ->
-    H.modify_ _ { educationLevel = educationLevelFromApi value }
-  SetName name ->
-    H.modify_ _ { name = name, nameError = Nothing }
+  SetEducationLevel value -> H.modify_ _ { educationLevel = educationLevelFromApi value }
+  SetName name -> H.modify_ _ { name = name, nameError = Nothing }
   SetAge value -> case Int.fromString value of
     Nothing -> pure unit
     Just age -> H.modify_ _ { age = age }
@@ -247,21 +259,20 @@ handleAction = case _ of
     H.modify_ \state ->
       state
         { openSeatPicker =
-            if state.openSeatPicker == Just period then Nothing
-            else Just period
+          if state.openSeatPicker == Just period then
+            Nothing
+          else
+            Just period
         }
-  CloseSeatPicker ->
-    H.modify_ _ { openSeatPicker = Nothing }
+  CloseSeatPicker -> H.modify_ _ { openSeatPicker = Nothing }
   ClearSeat period -> case period of
-    Year114SecondSemester ->
-      H.modify_ _ { seat114SecondSemester = Nothing, openSeatPicker = Nothing }
-    Year115Summer ->
-      H.modify_ _ { seat115Summer = Nothing, openSeatPicker = Nothing }
+    Year114SecondSemester -> H.modify_ _ { seat114SecondSemester = Nothing, openSeatPicker = Nothing }
+    Year115Summer -> H.modify_ _ { seat115Summer = Nothing, openSeatPicker = Nothing }
+    Year115FirstSemester -> H.modify_ _ { seat115FirstSemester = Nothing, openSeatPicker = Nothing }
   SelectSeat period seat -> case period of
-    Year114SecondSemester ->
-      H.modify_ _ { seat114SecondSemester = Just seat, openSeatPicker = Nothing }
-    Year115Summer ->
-      H.modify_ _ { seat115Summer = Just seat, openSeatPicker = Nothing }
+    Year114SecondSemester -> H.modify_ _ { seat114SecondSemester = Just seat, openSeatPicker = Nothing }
+    Year115Summer -> H.modify_ _ { seat115Summer = Just seat, openSeatPicker = Nothing }
+    Year115FirstSemester -> H.modify_ _ { seat115FirstSemester = Just seat, openSeatPicker = Nothing }
   Submit -> do
     state <- H.get
     if state.isSubmitting then
@@ -277,16 +288,18 @@ handleAction = case _ of
             , seats:
                 Array.catMaybes
                   [ map
-                      (\seat -> { period: seatPeriodToApi Year114SecondSemester, seat })
+                      (\seat -> { period: toApiValue Year114SecondSemester, seat })
                       state.seat114SecondSemester
                   , map
-                      (\seat -> { period: seatPeriodToApi Year115Summer, seat })
+                      (\seat -> { period: toApiValue Year115Summer, seat })
                       state.seat115Summer
+                  , map
+                      (\seat -> { period: toApiValue Year115FirstSemester, seat })
+                      state.seat115FirstSemester
                   ]
             }
         )
-  Receive input ->
-    H.modify_ _ { isSubmitting = input.isSubmitting }
+  Receive input -> H.modify_ _ { isSubmitting = input.isSubmitting }
 
 educationLevelFromApi :: String -> EducationLevel
 educationLevelFromApi = case _ of

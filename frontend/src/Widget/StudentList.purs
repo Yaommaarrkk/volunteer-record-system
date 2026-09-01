@@ -10,7 +10,8 @@ import Data.Array as Array
 import Data.Int as Int
 import Data.Maybe (Maybe(..))
 import Data.String.Common as String
-import Domain.Volunteer (Seat, SeatPeriod(..), Volunteer, ageToGradeLabel, formatUpdatedAt, seatForPeriod, showSeat)
+import Domain.Volunteer (Volunteer, ageToGradeLabel, formatUpdatedAt, seatForPeriod, showSeat)
+import Domain.Seat (Seat, SeatPeriodType(..), SeatLayout, seatsForLayout, toApiValue, displayName, seatsForPeriod)
 import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
@@ -35,7 +36,7 @@ type State
   = { volunteers :: Array Volunteer
     , isLoading :: Boolean
     , loadError :: Maybe String
-    , selectedSeatPeriod :: SeatPeriod
+    , selectedSeatPeriod :: SeatPeriodType
     , sortMode :: SortMode
     , editingVolunteerId :: Maybe Int
     , editingField :: Maybe EditField
@@ -69,7 +70,7 @@ data Action
   | AskAcademicYearEdit
   | CancelAcademicYearEdit
   | ConfirmAcademicYearEdit Int
-  | SelectSeatPeriod SeatPeriod
+  | SelectSeatPeriod SeatPeriodType
   | SelectSortMode SortMode
   | ToggleVolunteerEdit Int
   | BeginNameEdit Volunteer
@@ -92,7 +93,7 @@ data Output
   | UpdateAcademicYearRequested Int
   | UpdateNameRequested Int String
   | UpdateAgeRequested Int Int
-  | UpdateSeatRequested Int SeatPeriod (Maybe Seat)
+  | UpdateSeatRequested Int SeatPeriodType (Maybe Seat)
 
 component :: forall query m. MonadEffect m => H.Component query Input Output m
 component =
@@ -156,8 +157,9 @@ render state =
             [ HH.span [ HP.class_ (HH.ClassName "list-control-title") ] [ HH.text "座位顯示" ]
             , HH.div
                 [ HP.class_ (HH.ClassName "list-radio-options") ]
-                [ seatPeriodRadio "114下" Year114SecondSemester state.selectedSeatPeriod
-                , seatPeriodRadio "115暑假" Year115Summer state.selectedSeatPeriod
+                [ seatPeriodRadio Year114SecondSemester state.selectedSeatPeriod
+                , seatPeriodRadio Year115Summer state.selectedSeatPeriod
+                , seatPeriodRadio Year115FirstSemester state.selectedSeatPeriod
                 ]
             ]
         , HH.div
@@ -176,11 +178,10 @@ render state =
 
 seatPeriodRadio ::
   forall m.
-  String ->
-  SeatPeriod ->
-  SeatPeriod ->
+  SeatPeriodType ->
+  SeatPeriodType ->
   H.ComponentHTML Action Slots m
-seatPeriodRadio label period selectedPeriod =
+seatPeriodRadio period selectedPeriod =
   HH.label_
     [ HH.input
         [ HP.type_ HP.InputRadio
@@ -188,7 +189,7 @@ seatPeriodRadio label period selectedPeriod =
         , HP.checked (period == selectedPeriod)
         , HE.onChange \_ -> SelectSeatPeriod period
         ]
-    , HH.text label
+    , HH.text (displayName period)
     ]
 
 sortModeRadio ::
@@ -252,7 +253,7 @@ renderVolunteerList state
 sortedVolunteers :: State -> Array Volunteer
 sortedVolunteers state = Array.sortBy (compareVolunteers state.sortMode state.selectedSeatPeriod) state.volunteers
 
-compareVolunteers :: SortMode -> SeatPeriod -> Volunteer -> Volunteer -> Ordering
+compareVolunteers :: SortMode -> SeatPeriodType -> Volunteer -> Volunteer -> Ordering
 compareVolunteers sortMode period left right = case sortMode of
   SortBySeat ->
     withNameFallback
@@ -387,7 +388,7 @@ renderSeatCell state isEditing volunteer =
               , renderEditActions "座位" (SubmitSeat volunteer.id)
               ]
           , if state.isSeatPickerOpen then
-              renderSeatPicker state.draftSeat
+              renderSeatPicker state.draftSeat state.selectedSeatPeriod
             else
               HH.text ""
           ]
@@ -437,8 +438,8 @@ iconButton label icon className action =
     ]
     [ HH.text icon ]
 
-renderSeatPicker :: forall m. Maybe Seat -> H.ComponentHTML Action Slots m
-renderSeatPicker selectedSeat =
+renderSeatPicker :: forall m. Maybe Seat -> SeatPeriodType -> H.ComponentHTML Action Slots m
+renderSeatPicker selectedSeat period =
   HH.div
     [ HP.class_ (HH.ClassName "table-seat-picker") ]
     [ HH.div
@@ -469,15 +470,9 @@ renderSeatPicker selectedSeat =
                   ]
                   [ HH.text (show seat.row <> "-" <> show seat.col) ]
             )
-            seats
+            (seatsForPeriod period)
         )
     ]
-
-seats :: Array Seat
-seats = do
-  row <- Array.range 1 5
-  col <- Array.range 1 4
-  pure { row, col }
 
 renderDeleteDialog :: forall m. Volunteer -> H.ComponentHTML Action Slots m
 renderDeleteDialog volunteer =

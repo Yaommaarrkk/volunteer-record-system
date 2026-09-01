@@ -504,6 +504,10 @@ body:has(.daily-activity-page) {
   transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
 }
 
+.seat-picker-col3 {
+  width: 200px;
+}
+
 .seat-field.seat-picker-open .seat-picker {
   opacity: 1;
   pointer-events: auto;
@@ -528,6 +532,10 @@ body:has(.daily-activity-page) {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 7px;
+}
+
+.seat-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .seat-stage {

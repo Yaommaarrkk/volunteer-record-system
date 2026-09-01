@@ -1,37 +1,19 @@
 module Domain.Volunteer
-  ( Seat
+  ( Volunteer
   , SeatAssignment
-  , SeatPeriod(..)
-  , Volunteer
   , ageToGradeLabel
   , displayVolunteer
   , formatUpdatedAt
   , ageToGrade
   , getGrade
   , seatForPeriod
-  , seatPeriodToApi
   , showSeat
   ) where
 
 import Prelude (class Eq, map, show, (-), (==), (<>))
 import Data.Array as Array
 import Data.Maybe (Maybe(..))
-
-type Seat
-  = { row :: Int
-    , col :: Int
-    }
-
-type SeatAssignment
-  = { period :: String
-    , seat :: Seat
-    }
-
-data SeatPeriod
-  = Year114SecondSemester
-  | Year115Summer
-
-derive instance eqSeatPeriod :: Eq SeatPeriod
+import Domain.Seat as Seat
 
 type Volunteer
   = { id :: Int
@@ -41,21 +23,21 @@ type Volunteer
     , seats :: Array SeatAssignment
     }
 
-foreign import formatUpdatedAt
-  :: String
-  -> { date :: String
-     , time :: String
-     }
+type SeatAssignment
+  = { period :: String
+    , seat :: Seat.Seat
+    }
 
-seatPeriodToApi :: SeatPeriod -> String
-seatPeriodToApi = case _ of
-  Year114SecondSemester -> "YEAR_114_SECOND_SEMESTER"
-  Year115Summer -> "YEAR_115_SUMMER"
+foreign import formatUpdatedAt ::
+  String ->
+  { date :: String
+  , time :: String
+  }
 
-seatForPeriod :: SeatPeriod -> Volunteer -> Maybe Seat
-seatForPeriod period volunteer =
+seatForPeriod :: Seat.SeatPeriodType -> Volunteer -> Maybe Seat.Seat
+seatForPeriod periodType volunteer =
   map _.seat
-    (Array.find (\assignment -> assignment.period == seatPeriodToApi period) volunteer.seats)
+    (Array.find (\assignment -> assignment.period == Seat.toApiValue periodType) volunteer.seats)
 
 ageToGradeLabel :: Int -> String
 ageToGradeLabel = case _ of
@@ -78,16 +60,18 @@ ageToGrade age = age - 6
 getGrade :: Volunteer -> Int
 getGrade volunteer = ageToGrade volunteer.age
 
-showSeat :: Maybe Seat -> String
+showSeat :: Maybe Seat.Seat -> String
 showSeat = case _ of
   Just seat -> show seat.row <> "-" <> show seat.col
   Nothing -> "-"
 
-displayVolunteer :: Volunteer -> String
-displayVolunteer volunteer =
+displayVolunteer :: Seat.SeatPeriodType -> Volunteer -> String
+displayVolunteer period volunteer =
   volunteer.name
-    <> " (grade "
+    <> " ("
+    <> Seat.displayName period
+    <> ", grade "
     <> show (getGrade volunteer)
     <> ", seat "
-    <> showSeat (seatForPeriod Year114SecondSemester volunteer)
+    <> showSeat (seatForPeriod period volunteer)
     <> ")"
