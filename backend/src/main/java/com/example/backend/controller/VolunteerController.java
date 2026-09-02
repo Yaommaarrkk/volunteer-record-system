@@ -194,10 +194,13 @@ public class VolunteerController {
             return volunteerNotFound(id);
         }
 
+
         boolean isClearingSeat = request.row() == null && request.col() == null;
         boolean isValidSeat =
-                request.row() != null && request.row() >= 1 && request.row() <= 5
-                        && request.col() != null && request.col() >= 1 && request.col() <= 4;
+                period.seatLayout().contains( // 計算是不是在座位表range內
+                        request.row(),
+                        request.col()
+                );
 
         if (!isClearingSeat && !isValidSeat) {
             return ResponseEntity
