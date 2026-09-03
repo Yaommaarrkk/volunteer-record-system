@@ -3,13 +3,14 @@ module Domain.Seat
   , SeatPeriodType(..)
   , SeatPeriod
   , SeatLayout
-  , PodiumDirection
+  , PodiumDirection(..)
   , seatPeriods
   , findSeatPeriod
   , toApiValue
   , fromApiValue
   , fromApiValue_
   , displayName
+  , podiumDirectionForPeriod
   , seatsForLayout
   , seatsForPeriod
   , deltaRow
@@ -105,6 +106,11 @@ displayName :: SeatPeriodType -> String
 displayName periodType = case Array.find (\period -> period.periodType == periodType) seatPeriods of
   Just period -> period.displayName
   Nothing -> unsafeCrashWith "Unknown SeatPeriodType"
+
+podiumDirectionForPeriod :: SeatPeriodType -> PodiumDirection
+podiumDirectionForPeriod periodType = case findSeatPeriod periodType of
+  Just period -> period.seatLayout.podiumDirection
+  Nothing -> Top
 
 seatsForLayout :: SeatLayout -> Array Seat
 seatsForLayout layout = do

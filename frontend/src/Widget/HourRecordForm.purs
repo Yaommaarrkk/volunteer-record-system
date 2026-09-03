@@ -17,8 +17,8 @@ import Data.String.Pattern (Pattern(..))
 import Data.Tuple (uncurry)
 import Domain.Activity (Activity, activityTypeOptions)
 import Domain.HourRecord (CopiedHourRecord)
-import Domain.Volunteer (Volunteer, getGrade, seatForPeriod)
-import Domain.Seat (Seat, SeatPeriodType(..), SeatPeriod, seatPeriods, toApiValue, fromApiValue_, seatsForPeriod)
+import Domain.Volunteer (Volunteer)
+import Domain.Seat (SeatPeriodType(..), toApiValue, fromApiValue_)
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import Halogen as H
@@ -27,6 +27,7 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Simple.JSON (readJSON, writeJSON)
 import Widget.OutsideClick as OutsideClick
+import Widget.HourRecord.ParticipantField (renderParticipantField)
 
 foreign import isPositiveOneDecimal :: String -> Boolean
 
@@ -113,7 +114,8 @@ type State
 data Action
   = Initialize
   | Receive Input
-  | ClickedOutsideParticipant
+  | ClickedOutsideSeatPicker
+  | ClickedOutsideOtherStudents
   | ClickedOutsideHours
   | SelectActivity String
   | SetActivityType String
@@ -198,24 +200,43 @@ render state =
         [ formField "類型" (renderActivityTypeSelect state.activityType)
         , formField "活動名" (renderActivitySelect state)
         , renderDateField state
-        , renderParticipantField state
+        , renderParticipantField
+            { volunteers: state.volunteers
+            , selectedVolunteerIds: state.selectedVolunteerIds
+            , draftVolunteerIds: state.draftVolunteerIds
+            , selectedSeatPeriod: state.selectedSeatPeriod
+            , isSeatPickerOpen: state.isSeatPickerOpen
+            , isOtherStudentsOpen: state.isOtherStudentsOpen
+            , participantError: state.participantError
+            , selectedNames:
+                state.volunteers
+                  # Array.filter (\volunteer -> Array.elem volunteer.id state.selectedVolunteerIds)
+                  # map _.name
+                  # String.joinWith ", "
+            , onToggleSeatPicker: ToggleSeatPicker
+            , onSelectSeatPeriod: SelectSeatPeriod
+            , onToggleOtherStudents: ToggleOtherStudents
+            , onToggleDraftVolunteer: ToggleDraftVolunteer
+            , onConfirmVolunteers: ConfirmVolunteers
+            , onClearDraftVolunteers: ClearDraftVolunteers
+            }
         , HH.div
             [ HP.classes
-                ( [ HH.ClassName "form-field"
-                  , HH.ClassName "hour-record-hours-field"
-                  ]
-                    <> if state.isHoursPickerOpen then
-                        [ HH.ClassName "hours-picker-open" ]
-                      else
-                        []
-                )
+                [ HH.ClassName "form-field"
+                , HH.ClassName "hour-record-hours-field"
+                ]
             ]
             [ HH.span_ [ HH.text "時數" ]
             , HH.button
                 [ HP.class_ (HH.ClassName "seat-picker-trigger")
                 , HE.onClick \_ -> OpenHoursPicker
                 ]
-                [ HH.text if String.trim state.hoursText == "" then "輸入時數" else state.hoursText ]
+                [ HH.span
+                    [ HP.class_ (HH.ClassName "selection-trigger-label")
+                    , HP.attr (HH.AttrName "title") state.hoursText
+                    ]
+                    [ HH.text if String.trim state.hoursText == "" then "輸入時數" else state.hoursText ]
+                ]
             , renderFieldError state.hoursError
             , renderHoursPicker state
             ]
@@ -312,7 +333,14 @@ typeOption value label = HH.option [ HP.value value ] [ HH.text label ]
 renderHoursPicker :: forall m. State -> H.ComponentHTML Action Slots m
 renderHoursPicker state =
   HH.div
-    [ HP.class_ (HH.ClassName "seat-picker hour-record-hours-picker") ]
+    [ HP.classes
+        ( [ HH.ClassName "seat-picker hour-record-hours-picker" ]
+            <> if state.isHoursPickerOpen then
+                [ HH.ClassName "hours-picker-open" ]
+              else
+                []
+        )
+    ]
     [ HH.input
         [ HP.type_ HP.InputText
         , HP.attr (HH.AttrName "data-hour-record-hours-input") ""
@@ -353,153 +381,6 @@ renderDateField state =
         ]
     , renderFieldError state.dateError
     ]
-
-renderParticipantField :: forall m. State -> H.ComponentHTML Action Slots m
-renderParticipantField state =
-  let
-    selectedNames =
-      state.volunteers
-        # Array.filter (\volunteer -> Array.elem volunteer.id state.selectedVolunteerIds)
-        # map _.name
-        # String.joinWith ", "
-
-    volunteersWithoutSeat =
-      state.volunteers
-        # Array.filter
-            ( \volunteer -> case seatForPeriod state.selectedSeatPeriod volunteer of
-                Nothing -> true
-                Just _ -> false
-            )
-
-    seatPeriodOption period =
-      HH.option
-        [ HP.value period.apiValue ]
-        [ HH.text period.displayName ]
-  in
-    HH.div
-      [ HP.classes
-          ( [ HH.ClassName "form-field"
-            , HH.ClassName "seat-field"
-            , HH.ClassName "hour-record-participant-field"
-            ]
-              <> if state.isSeatPickerOpen then
-                  [ HH.ClassName "seat-picker-open" ]
-                else
-                  []
-                    <> if state.participantError /= Nothing then [ HH.ClassName "participant-field-error" ] else []
-          )
-      ]
-      [ HH.span_ [ HH.text "參與學生" ]
-      , HH.button
-          [ HP.class_ (HH.ClassName "seat-picker-trigger")
-          , HE.onClick \_ -> ToggleSeatPicker
-          ]
-          [ HH.span
-              [ HP.class_ (HH.ClassName "participant-name-summary")
-              , HP.attr (HH.AttrName "title") selectedNames
-              ]
-              [ HH.text
-                  if Array.null state.selectedVolunteerIds then
-                    "選擇學生"
-                  else
-                    selectedNames
-              ]
-          ]
-      , renderFieldError state.participantError
-      , HH.div
-          [ HP.class_ (HH.ClassName "seat-picker hour-record-seat-picker") ]
-          [ HH.label
-              [ HP.class_ (HH.ClassName "seat-period-select") ]
-              [ HH.span_ [ HH.text "選學期" ]
-              , HH.select
-                  [ HP.value (toApiValue state.selectedSeatPeriod)
-                  , HE.onValueChange SelectSeatPeriod
-                  ]
-                  (map seatPeriodOption seatPeriods)
-              ]
-          , HH.div
-              [ HP.class_ (HH.ClassName "participant-seat-stage") ]
-              [ HH.div
-                  [ HP.class_ (HH.ClassName "participant-unseated-dropdown") ]
-                  [ HH.button
-                      [ HP.class_ (HH.ClassName "participant-unseated-trigger")
-                      , HE.onClick \_ -> ToggleOtherStudents
-                      ]
-                      [ HH.span_ [ HH.text "其他學生" ]
-                      , HH.span_ [ HH.text if state.isOtherStudentsOpen then "▴" else "▾" ]
-                      ]
-                  , if state.isOtherStudentsOpen then
-                      HH.div
-                        [ HP.class_ (HH.ClassName "participant-unseated-menu") ]
-                        if Array.null volunteersWithoutSeat then
-                          [ HH.p_ [ HH.text "沒有其他學生" ] ]
-                        else
-                          map
-                            ( \volunteer ->
-                                HH.button
-                                  [ HP.classes
-                                      ( [ HH.ClassName "participant-unseated-option" ]
-                                          <> if Array.elem volunteer.id state.draftVolunteerIds then
-                                              [ HH.ClassName "participant-unseated-option-selected" ]
-                                            else
-                                              []
-                                      )
-                                  , HE.onClick \_ -> ToggleDraftVolunteer volunteer.id
-                                  ]
-                                  [ HH.text (volunteerWithGrade volunteer) ]
-                            )
-                            volunteersWithoutSeat
-                    else
-                      HH.text ""
-                  ]
-              , HH.span
-                  [ HP.class_ (HH.ClassName "seat-stage-button") ]
-                  [ HH.text "講台" ]
-              , HH.div
-                  [ HP.class_ (HH.ClassName "participant-seat-actions") ]
-                  [ HH.button
-                      [ HP.class_ (HH.ClassName "seat-confirm-button")
-                      , HE.onClick \_ -> ConfirmVolunteers
-                      ]
-                      [ HH.text "確認" ]
-                  , HH.button
-                      [ HP.class_ (HH.ClassName "seat-clear-button")
-                      , HE.onClick \_ -> ClearDraftVolunteers
-                      ]
-                      [ HH.text "清除" ]
-                  ]
-              ]
-          , HH.div
-              [ HP.class_ (HH.ClassName "seat-grid participant-seat-grid") ]
-              (map (renderVolunteerSeat state) (seatsForPeriod state.selectedSeatPeriod)) -- seatsForLayout回傳Array
-          ]
-      ]
-
-renderVolunteerSeat :: forall m. State -> Seat -> H.ComponentHTML Action Slots m
-renderVolunteerSeat state seat = case volunteerAtSeat state.selectedSeatPeriod seat state.volunteers of
-  Nothing ->
-    HH.button
-      [ HP.classes [ HH.ClassName "seat-button", HH.ClassName "participant-seat-empty" ]
-      , HP.disabled true
-      ]
-      [ HH.text (show seat.row <> "-" <> show seat.col) ]
-  Just volunteer ->
-    HH.button
-      [ HP.classes
-          ( [ HH.ClassName "seat-button"
-            , HH.ClassName "participant-seat-button"
-            ]
-              <> if Array.elem volunteer.id state.draftVolunteerIds then
-                  [ HH.ClassName "participant-seat-selected" ]
-                else
-                  []
-          )
-      , HE.onClick \_ -> ToggleDraftVolunteer volunteer.id
-      ]
-      [ HH.strong_ [ HH.text (volunteerWithGrade volunteer) ] ]
-
-volunteerWithGrade :: Volunteer -> String
-volunteerWithGrade volunteer = volunteer.name <> "(" <> show (getGrade volunteer) <> ")"
 
 renderNoteModal :: forall m. String -> H.ComponentHTML Action Slots m
 renderNoteModal note =
@@ -550,7 +431,8 @@ handleAction ::
   H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   Initialize -> do
-    void $ H.subscribe (ClickedOutsideParticipant <$ OutsideClick.outsideClickEmitter ".hour-record-participant-field")
+    void $ H.subscribe (ClickedOutsideSeatPicker <$ OutsideClick.outsideClickEmitter ".seat-picker")
+    void $ H.subscribe (ClickedOutsideOtherStudents <$ OutsideClick.outsideClickEmitter ".participant-unseated-dropdown")
     void $ H.subscribe (ClickedOutsideHours <$ OutsideClick.outsideClickEmitter ".hour-record-hours-field")
     storedSeatPeriod <- H.liftEffect loadSelectedSeatPeriod -- 透過FFI 從localStorage讀
     storedDraft <- H.liftEffect loadHourRecordDraft
@@ -562,7 +444,8 @@ handleAction = case _ of
         today <- H.liftEffect getTodayIsoDate
         handleAction (SetDate today)
     H.modify_ _ { selectedSeatPeriod = fromApiValue_ storedSeatPeriod } -- "YEAR_115_SUMMER"轉Year115Summer
-  ClickedOutsideParticipant -> H.modify_ _ { isSeatPickerOpen = false, isOtherStudentsOpen = false }
+  ClickedOutsideSeatPicker -> H.modify_ _ { isSeatPickerOpen = false }
+  ClickedOutsideOtherStudents -> H.modify_ _ { isOtherStudentsOpen = false }
   ClickedOutsideHours -> H.modify_ _ { isHoursPickerOpen = false }
   Receive input -> do
     state <- H.get
@@ -863,6 +746,3 @@ isLeapYear year = mod year 400 == 0 || (mod year 4 == 0 && mod year 100 /= 0)
 
 pad2 :: Int -> String
 pad2 value = if value < 10 then "0" <> show value else show value
-
-volunteerAtSeat :: SeatPeriodType -> Seat -> Array Volunteer -> Maybe Volunteer
-volunteerAtSeat period seat = Array.find (\volunteer -> seatForPeriod period volunteer == Just seat)

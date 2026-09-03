@@ -11,13 +11,15 @@ import Data.Int as Int
 import Data.Maybe (Maybe(..))
 import Data.String.Common as String
 import Domain.Volunteer (Volunteer, ageToGradeLabel, formatUpdatedAt, seatForPeriod, showSeat)
-import Domain.Seat (Seat, SeatPeriodType(..), SeatLayout, seatsForLayout, toApiValue, displayName, seatsForPeriod)
+import Domain.Seat (Seat, SeatPeriodType(..), displayName)
 import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Widget.OutsideClick as OutsideClick
+import Widget.SeatPicker (renderSeatPickerLayout)
+import Widget.SeatTable.SingleSelect (renderSingleSelectSeat)
 
 type Slot id
   = forall query. H.Slot query Output id
@@ -442,36 +444,11 @@ renderSeatPicker :: forall m. Maybe Seat -> SeatPeriodType -> H.ComponentHTML Ac
 renderSeatPicker selectedSeat period =
   HH.div
     [ HP.class_ (HH.ClassName "table-seat-picker") ]
-    [ HH.div
-        [ HP.class_ (HH.ClassName "seat-stage") ]
-        [ HH.span [ HP.class_ (HH.ClassName "seat-stage-spacer") ] []
-        , HH.span
-            [ HP.class_ (HH.ClassName "seat-stage-button") ]
-            [ HH.text "講台" ]
-        , HH.button
-            [ HP.class_ (HH.ClassName "seat-clear-button")
-            , HE.onClick \_ -> ClearDraftSeat
-            ]
-            [ HH.text "清除" ]
-        ]
-    , HH.div
-        [ HP.class_ (HH.ClassName "seat-grid") ]
-        ( map
-            ( \seat ->
-                HH.button
-                  [ HP.classes
-                      ( [ HH.ClassName "seat-button" ]
-                          <> if selectedSeat == Just seat then
-                              [ HH.ClassName "seat-button-selected" ]
-                            else
-                              []
-                      )
-                  , HE.onClick \_ -> SelectDraftSeat seat
-                  ]
-                  [ HH.text (show seat.row <> "-" <> show seat.col) ]
-            )
-            (seatsForPeriod period)
-        )
+    [ renderSeatPickerLayout period
+        Nothing
+        (Just ClearDraftSeat)
+        "確認"
+        (renderSingleSelectSeat selectedSeat SelectDraftSeat)
     ]
 
 renderDeleteDialog :: forall m. Volunteer -> H.ComponentHTML Action Slots m

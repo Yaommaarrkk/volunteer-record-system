@@ -12,13 +12,15 @@ import Data.Maybe (Maybe(..))
 import Data.String.Common as String
 import Domain.EducationLevel (EducationLevel(..), educationLevelToApi)
 import Domain.Volunteer (SeatAssignment, ageToGradeLabel, showSeat)
-import Domain.Seat (Seat, SeatPeriodType(..), seatsForPeriod, toApiValue, displayName, deltaCol)
+import Domain.Seat (Seat, SeatPeriodType(..), toApiValue, displayName)
 import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Widget.OutsideClick as OutsideClick
+import Widget.SeatPicker (renderSeatPickerLayout)
+import Widget.SeatTable.SingleSelect (renderSingleSelectSeat)
 
 type Slot id
   = forall query. H.Slot query Output id
@@ -197,49 +199,13 @@ seatField period selectedSeat openSeatPicker =
         [ HH.text (showSeat selectedSeat) ]
     , HH.div
         [ HP.classes
-            [ HH.ClassName "seat-picker"
-            , HH.ClassName
-                $ if deltaCol period == 3 then
-                    "seat-picker-col3"
-                  else
-                    ""
-            ]
+            [ HH.ClassName "seat-picker" ]
         ]
-        [ HH.p_ [ HH.text "選擇座位" ]
-        , HH.div
-            [ HP.class_ (HH.ClassName "seat-stage") ]
-            [ HH.span
-                [ HP.class_ (HH.ClassName "seat-stage-spacer") ]
-                []
-            , HH.span
-                [ HP.class_ (HH.ClassName "seat-stage-button") ]
-                [ HH.text "講台" ]
-            , HH.button
-                [ HP.class_ (HH.ClassName "seat-clear-button")
-                , HE.onClick \_ -> ClearSeat period
-                ]
-                [ HH.text "清除" ]
-            ]
-        , HH.div
-            [ HP.classes
-                [ HH.ClassName "seat-grid"
-                , HH.ClassName
-                    $ if deltaCol period == 3 then
-                        "seat-grid-3"
-                      else
-                        ""
-                ]
-            ]
-            ( map
-                ( \seat ->
-                    HH.button
-                      [ HP.class_ (HH.ClassName "seat-button")
-                      , HE.onClick \_ -> SelectSeat period seat
-                      ]
-                      [ HH.text (show seat.row <> "-" <> show seat.col) ]
-                )
-                (seatsForPeriod period)
-            )
+        [ renderSeatPickerLayout period
+            Nothing
+            (Just (ClearSeat period))
+            "確認"
+            (renderSingleSelectSeat selectedSeat (SelectSeat period))
         ]
     ]
 

@@ -470,9 +470,7 @@ body:has(.daily-activity-page) {
   font-weight: 800;
 }
 
-.seat-field.seat-picker-open {
-  z-index: 3;
-}
+
 
 .seat-picker-backdrop {
   position: fixed;
@@ -486,100 +484,180 @@ body:has(.daily-activity-page) {
   text-align: left;
 }
 
-.seat-picker {
-  position: absolute;
+.seat-picker, /* 學生懸浮框 */
+.other-students-picker {
+  top: calc(100% + 6px);
+  max-width: 800px;
+  position: absolute; /* 漂浮 */
   z-index: 3;
-  top: 78px;
-  right: 0;
-  width: 270px;
   padding: 16px;
   border: 1px solid #c8d7d2;
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 18px 40px rgba(31, 84, 74, 0.18);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-6px);
   visibility: hidden;
   transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
 }
 
-.seat-picker-col3 {
-  width: 200px;
-}
-
-.seat-field.seat-picker-open .seat-picker {
-  opacity: 1;
+.hour-record-page .seat-picker,
+.hour-record-page .hour-record-hours-picker {
   pointer-events: auto;
   transform: translateY(0);
-  visibility: visible;
+  z-index: 3;
 }
 
-.hour-record-filter.seat-picker-open .seat-picker {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
-  visibility: visible;
+.seat-field .seat-picker{ /* 登錄時數條 - 參與學生懸浮框 */
+  left: 50%; /* 左右置中 */
+  transform: translateX(-50%); /* 左右置中 */
 }
 
-.seat-picker p {
-  margin: 0 0 12px;
-  color: #64746f;
-  font-size: 12px;
+.filter-button .seat-picker, /* 登錄歷史 - 篩選學生懸浮框 */
+.filter-button .activity-picker { /* 登錄歷史 -  篩選活動懸浮框 */
+  left: 0; /* 左對齊 */
 }
 
-.seat-grid {
+.other-students-picker { /* 學生懸浮框產生的其他學生懸浮框 */
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 7px;
+  grid-template-columns: 1fr;
+  left: 50%; /* 左右置中 */
+  transform: translateX(-50%); /* 左右置中 */
+  z-index: 4;
+  visibility: visible;
+  gap: 4px;
 }
 
-.seat-grid-3 {
-  grid-template-columns: repeat(3, 1fr);
+.hour-record-page .hour-record-hours-picker { /* 參登錄時數條 - 時數懸浮框 */
+  display: grid;
+  width: 310px;
+  gap: 10px;
+  right: 0; /* 右對齊 */
+}
+
+.seat-picker-open .seat-picker,
+.hour-record-hours-field .hours-picker-open {
+  visibility: visible;
+}
+
+.seat-layout {
+  display: grid;
+  gap: 6px;
+}
+
+.seat-layout-top,
+.seat-layout-bottom {
+  grid-template-rows: auto auto;
+}
+
+.seat-layout-left,
+.seat-layout-right {
+  grid-template-columns: auto auto;
 }
 
 .seat-stage {
   display: grid;
+  align-items: center;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  margin-left: 2px;
+  margin-right: 2px;
+}
+
+.seat-layout-left .seat-stage,
+.seat-layout-right .seat-stage {
+  grid-template-rows: 1fr auto 1fr;
+  grid-template-columns: 1fr;
+  align-items: center;
+}
+
+.seat-layout-top .seat-stage,
+.seat-layout-bottom .seat-stage {
+  grid-template-rows: 1fr;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  margin: 0 0 14px;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed #cfddd8;
+}
+
+.seat-layout-left .seat-stage {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.seat-layout-right .seat-stage {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.seat-layout-top .seat-stage {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.seat-layout-bottom .seat-stage {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+
+
+
+
+.seat-stage-leading {
+  min-width: 0;
 }
 
 .seat-stage-spacer {
   width: 54px;
 }
 
-.seat-stage-button {
+.seat-stage-button { /* 講台 */
   display: grid;
-  width: 92px;
-  min-height: 38px;
   place-items: center;
+
+  justify-self: center;
+  align-self: center;
   border: 1px solid #c8d7d2;
   border-radius: 8px;
   background: #f6faf8;
   color: #28685e;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
 }
 
-.seat-clear-button {
-  justify-self: end;
-  width: 54px;
-  height: 54px;
-  border: 1px solid #d44d45;
-  border-radius: 8px;
-  background: #fff1f0;
-  color: #b82f29;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 700;
+.seat-layout-top .seat-stage-button,
+.seat-layout-bottom .seat-stage-button {
+  grid-column: 2;
+  width: 92px;
+  height: 38px;
 }
 
-.seat-clear-button:hover {
-  background: #d44d45;
-  color: #fff;
+.seat-layout-left .seat-stage-button,
+.seat-layout-right .seat-stage-button {
+  grid-row: 2;
+  width: 38px;
+  height: 92px;
+  writing-mode: vertical-rl;
+}
+
+.seat-stage-actions { /* 確認&清除紐 */
+  display: grid;
+  gap: 6px;
+  justify-self: center;
+  align-self: center;
+}
+
+.seat-layout-top .seat-stage-actions,
+.seat-layout-bottom .seat-stage-actions {
+  grid-column: 3;
+  margin-left: 8px;
+  grid-template-columns: 1fr 1fr;
+  justify-self: end;
+}
+
+.seat-layout-left .seat-stage-actions,
+.seat-layout-right .seat-stage-actions {
+  grid-row: 1;
+  margin-top: 8px;
+  grid-template-rows: 1fr 1fr;
+  align-self: start;
 }
 
 .seat-button {
@@ -589,8 +667,8 @@ body:has(.daily-activity-page) {
   background: #f6faf8;
   color: #28685e;
   cursor: pointer;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .seat-button:hover {
@@ -598,6 +676,75 @@ body:has(.daily-activity-page) {
   background: #25796b;
   color: #fff;
 }
+
+
+
+.seat-grid { /* 座位表格 */
+  display: grid;
+  grid-template-columns: repeat(4, 58px);
+  grid-auto-rows: 58px;
+  gap: 7px;
+  justify-content: center;
+}
+
+.hour-record-page .seat-grid {
+  grid-template-columns: repeat(4, 72px);
+  grid-auto-rows: 74px;
+}
+
+.seat-grid-3 {
+  grid-template-columns: repeat(3, 58px);
+}
+
+.hour-record-page .seat-grid-3 {
+  grid-template-columns: repeat(3, 72px);
+}
+
+.seat-layout-left .seat-grid {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.seat-layout-right .seat-grid {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.seat-layout-top .seat-grid {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+.seat-layout-bottom .seat-grid {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+
+
+.seat-picker-layout.seat-layout-left .seat-stage-actions {
+  display: grid;
+  position: static;
+  width: 43px;
+  min-width: 43px;
+  grid-template-columns: 43px;
+  grid-template-rows: 43px 43px;
+  gap: 3px;
+  justify-self: start;
+  align-self: start;
+}
+
+.seat-picker-layout.seat-layout-left .seat-stage-actions {
+  display: grid;
+  width: 43px;
+  min-width: 43px;
+  grid-template-columns: 43px;
+  grid-template-rows: 43px 43px;
+  gap: 3px;
+  order: 1;
+  align-self: center;
+}
+
 
 .student-submit {
   display: inline-flex;
@@ -2080,21 +2227,12 @@ body:has(.daily-activity-page) {
   position: relative;
 }
 
-.hour-record-hours-field.hours-picker-open {
-  z-index: 5;
+.hour-record-participant-field .seat-picker-trigger {
+  width: 320px;
 }
 
-.hour-record-hours-field.hours-picker-open .hour-record-hours-picker {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
-  visibility: visible;
-}
-
-.hour-record-hours-picker {
-  display: grid;
-  width: 310px;
-  gap: 10px;
+.hour-record-hours-field .seat-picker-trigger {
+  width: 112px;
 }
 
 .hour-record-hours-picker > input {
@@ -2208,25 +2346,12 @@ body:has(.daily-activity-page) {
   width: 148px;
 }
 
-.hour-record-participant-field {
-  min-width: 0;
-  position: relative;
-}
-
-.hour-record-participant-field .seat-picker-trigger {
-  min-width: 0;
-  overflow: hidden;
-}
-
-.participant-name-summary {
+.participant-name-summary,
+.selection-trigger-label {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.hour-record-participant-field.seat-picker-open {
-  z-index: 5;
 }
 
 .hour-record-filter {
@@ -2240,84 +2365,14 @@ body:has(.daily-activity-page) {
   z-index: 5;
 }
 
-.hour-record-filter .seat-picker-trigger {
-  width: auto;
-  max-width: 240px;
-  min-height: 36px;
-  padding: 6px 10px;
-  overflow: hidden;
-  color: #17352f;
-  font-size: 13px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.hour-record-filter-picker {
-  top: calc(100% + 8px);
-  right: auto;
-  left: 0;
-  width: 320px;
-}
-
-.hour-record-filter-picker .participant-seat-stage {
-  grid-template-columns: 102px 1fr 88px;
-  gap: 6px;
-}
-
-.hour-record-filter-picker .participant-unseated-dropdown {
-  width: 102px;
-}
-
-.hour-record-filter-picker .participant-unseated-trigger,
-.hour-record-filter-picker .participant-unseated-option {
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.hour-record-filter-picker .participant-unseated-trigger {
-  min-height: 42px;
-  padding: 5px 7px;
-}
-
-.hour-record-filter-picker .participant-unseated-option {
-  min-height: 36px;
-  padding: 6px 9px;
-}
-
-.hour-record-filter-picker .participant-seat-actions {
+.seat-bar {
   display: grid;
-  width: auto;
-  grid-template-columns: 40px 40px;
-  gap: 4px;
-}
-
-.hour-record-filter-picker .seat-confirm-button,
-.hour-record-filter-picker .seat-clear-button,
-.activity-filter-actions .seat-confirm-button,
-.activity-filter-actions .seat-clear-button {
-  width: 100%;
-  height: 42px;
-  min-height: 42px;
-  padding: 0;
-}
-
-.hour-record-seat-picker {
-  width: 440px;
-}
-
-.seat-period-select {
-  display: flex;
-  gap: 10px;
   align-items: center;
-  margin-bottom: 14px;
-  color: #58716a;
-  font-size: 12px;
-  font-weight: 800;
+  grid-template-columns: 1fr auto 1fr;
+  margin-bottom: 6px;
 }
 
-.seat-period-select select {
+.seat-bar select {
   width: 82px;
   min-height: 36px;
   border: 1px solid #c8d7d2;
@@ -2328,10 +2383,17 @@ body:has(.daily-activity-page) {
   font: inherit;
 }
 
+.seat-period-select {
+  display: flex;
+  gap: 6px;
+  justify-self: start;
+  align-items: center;
+}
+
 .participant-seat-stage {
   display: grid;
   grid-template-columns: 150px 1fr 120px;
-  gap: 12px;
+  gap: 6px;
   align-items: center;
   margin-bottom: 14px;
   padding-bottom: 12px;
@@ -2339,13 +2401,16 @@ body:has(.daily-activity-page) {
 }
 
 .participant-unseated-dropdown {
+  display: grid;
+  grid-column: 3;
+
+  justify-self: end;
   position: relative;
-  width: 150px;
+  width: 82px;
 }
 
 .participant-unseated-trigger {
-  display: flex;
-  width: 100%;
+  width: 82px;
   min-height: 42px;
   align-items: center;
   justify-content: space-between;
@@ -2357,35 +2422,10 @@ body:has(.daily-activity-page) {
   cursor: pointer;
   font: inherit;
   font-size: 12px;
-}
-
-.participant-unseated-menu { /* 篩選活動框 */
-  position: absolute;
-  z-index: 8;
-  top: calc(100% + 6px);
-  left: 0;
-  display: grid;
-  width: 232px;
-  max-height: 400px;
-  gap: 5px;
-  overflow-y: auto;
-  border: 1px solid #b9cec8;
-  border-radius: 10px;
-  padding: 7px;
-  background: #fff;
-  box-shadow: 0 12px 26px rgba(23, 53, 47, 0.2);
-}
-
-.participant-unseated-menu p {
-  margin: 5px;
-  color: #71827e;
-  font-size: 12px;
+  font-weight: 700;
 }
 
 .participant-unseated-option {
-  min-height: 36px;
-  width: 200px;
-  max-width: 100%;
   border: 1px solid #d5e1dd;
   border-radius: 7px;
   padding: 6px 9px;
@@ -2395,6 +2435,11 @@ body:has(.daily-activity-page) {
   font: inherit;
   font-size: 12px;
   text-align: left;
+  font-weight: 700;
+  min-height: 36px;
+
+  width: 75px;
+  z-index: 4;
 }
 
 .participant-unseated-option:hover,
@@ -2407,25 +2452,37 @@ body:has(.daily-activity-page) {
 
 .participant-seat-actions {
   display: grid;
-  grid-template-columns: 48px 48px;
-  gap: 8px;
+  grid-template-columns: 40px 40px;
+  gap: 4px;
   justify-self: end;
+  width: auto;
 }
 
-.participant-seat-stage .seat-stage-button {
-  justify-self: center;
+.seat-clear-button,
+.seat-confirm-button {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.seat-clear-button {
+  border: 1px solid #d44d45;
+  color: #b82f29;
+  background: #fff1f0;
+}
+
+.seat-clear-button:hover {
+  background: #d44d45;
+  color: #fff;
 }
 
 .seat-confirm-button {
-  width: 54px;
-  height: 54px;
   border: 1px solid #2563eb;
-  border-radius: 8px;
-  background: #eff6ff;
   color: #1d4ed8;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 800;
+  background: #eff6ff;
 }
 
 .seat-confirm-button:hover,
@@ -2467,7 +2524,7 @@ body:has(.daily-activity-page) {
   opacity: 1;
 }
 
-.participant-seat-empty {
+.seat-empty {
   opacity: 0.22;
 }
 
