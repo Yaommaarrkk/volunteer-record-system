@@ -4,15 +4,16 @@ module Widget.SeatPicker
 
 import Prelude
 import Data.Array as Array
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe, fromMaybe)
 import Domain.Seat (PodiumDirection(..), Seat, SeatPeriodType, deltaCol, podiumDirectionForPeriod, seatsForPeriod)
+import Domain.StageAction (StageAction)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
-renderSeatPickerLayout :: forall action slots m. SeatPeriodType -> Maybe action -> Maybe action -> String -> (Seat -> H.ComponentHTML action slots m) -> H.ComponentHTML action slots m
-renderSeatPickerLayout period confirmAction clearAction confirmLabel renderSeat =
+renderSeatPickerLayout :: forall action slots m. SeatPeriodType -> Array (StageAction action) -> (Seat -> H.ComponentHTML action slots m) -> H.ComponentHTML action slots m
+renderSeatPickerLayout period seatStageActions renderSeat =
   HH.div
     [ HP.classes
         [ HH.ClassName "seat-layout"
@@ -20,31 +21,28 @@ renderSeatPickerLayout period confirmAction clearAction confirmLabel renderSeat 
         ]
     ]
     [ renderSeatGrid period renderSeat
-    , renderSeatStage period confirmAction clearAction confirmLabel
+    , renderSeatStage seatStageActions
     ]
 
-renderStageAction :: forall action slots m. String -> String -> action -> H.ComponentHTML action slots m
-renderStageAction className label action =
+-- renderStageAction: 單一確認紐or清除紐
+renderStageAction :: forall action slots m. StageAction action -> H.ComponentHTML action slots m
+renderStageAction stageAction =
   HH.button
-    [ HP.class_ (HH.ClassName className)
-    , HE.onClick \_ -> action
+    [ HP.class_ (HH.ClassName (fromMaybe "" stageAction.class_))
+    , HE.onClick \_ -> stageAction.action
     ]
-    [ HH.text label ]
+    [ HH.text stageAction.btnLabel ]
 
-renderSeatStage :: forall action slots m. SeatPeriodType -> Maybe action -> Maybe action -> String -> H.ComponentHTML action slots m
-renderSeatStage period confirmAction clearAction confirmLabel =
+renderSeatStage :: forall action slots m. Array (StageAction action) -> H.ComponentHTML action slots m
+renderSeatStage seatStageActions =
   HH.div
     [ HP.class_ (HH.ClassName "seat-stage") ]
     [ HH.span
-        [ HP.class_ (HH.ClassName "seat-stage-button") ]
+        [ HP.class_ (HH.ClassName "seat-stage-lectern") ]
         [ HH.text "講台" ]
     , HH.div
         [ HP.class_ (HH.ClassName "seat-stage-actions") ]
-        ( Array.catMaybes
-            [ map (renderStageAction "seat-confirm-button" confirmLabel) confirmAction
-            , map (renderStageAction "seat-clear-button" "清除") clearAction
-            ]
-        )
+        (map renderStageAction seatStageActions)
     ]
 
 renderSeatGrid :: forall action slots m. SeatPeriodType -> (Seat -> H.ComponentHTML action slots m) -> H.ComponentHTML action slots m

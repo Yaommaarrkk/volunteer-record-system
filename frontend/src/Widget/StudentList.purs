@@ -444,10 +444,13 @@ renderSeatPicker :: forall m. Maybe Seat -> SeatPeriodType -> H.ComponentHTML Ac
 renderSeatPicker selectedSeat period =
   HH.div
     [ HP.class_ (HH.ClassName "table-seat-picker") ]
-    [ renderSeatPickerLayout period
-        Nothing
-        (Just ClearDraftSeat)
-        "確認"
+    [ renderSeatPickerLayout
+        period
+        [ { action: ClearDraftSeat
+          , btnLabel: "清除"
+          , class_: Just "seat-clear-button"
+          }
+        ]
         (renderSingleSelectSeat selectedSeat SelectDraftSeat)
     ]
 

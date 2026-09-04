@@ -13,6 +13,7 @@ import Data.String.Common as String
 import Domain.EducationLevel (EducationLevel(..), educationLevelToApi)
 import Domain.Volunteer (SeatAssignment, ageToGradeLabel, showSeat)
 import Domain.Seat (Seat, SeatPeriodType(..), toApiValue, displayName)
+import Domain.StageAction (StageAction)
 import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
@@ -201,10 +202,13 @@ seatField period selectedSeat openSeatPicker =
         [ HP.classes
             [ HH.ClassName "seat-picker" ]
         ]
-        [ renderSeatPickerLayout period
-            Nothing
-            (Just (ClearSeat period))
-            "確認"
+        [ renderSeatPickerLayout
+            period
+            [ { action: ClearSeat period
+              , btnLabel: "清除"
+              , class_: Just "seat-clear-button"
+              }
+            ]
             (renderSingleSelectSeat selectedSeat (SelectSeat period))
         ]
     ]

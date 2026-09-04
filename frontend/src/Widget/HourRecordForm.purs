@@ -129,9 +129,9 @@ data Action
   | ToggleSeatPicker
   | CloseSeatPicker
   | SelectSeatPeriod String
-  | ToggleDraftVolunteer Int
+  | ToggleDraftStudents Int
   | ToggleOtherStudents
-  | ClearDraftVolunteers
+  | ClearDraftStudents
   | ConfirmVolunteers
   | OpenNoteModal
   | CloseNoteModal
@@ -200,26 +200,40 @@ render state =
         [ formField "類型" (renderActivityTypeSelect state.activityType)
         , formField "活動名" (renderActivitySelect state)
         , renderDateField state
-        , renderParticipantField
-            { volunteers: state.volunteers
-            , selectedVolunteerIds: state.selectedVolunteerIds
-            , draftVolunteerIds: state.draftVolunteerIds
-            , selectedSeatPeriod: state.selectedSeatPeriod
-            , isSeatPickerOpen: state.isSeatPickerOpen
-            , isOtherStudentsOpen: state.isOtherStudentsOpen
-            , participantError: state.participantError
-            , selectedNames:
-                state.volunteers
-                  # Array.filter (\volunteer -> Array.elem volunteer.id state.selectedVolunteerIds)
-                  # map _.name
-                  # String.joinWith ", "
-            , onToggleSeatPicker: ToggleSeatPicker
-            , onSelectSeatPeriod: SelectSeatPeriod
-            , onToggleOtherStudents: ToggleOtherStudents
-            , onToggleDraftVolunteer: ToggleDraftVolunteer
-            , onConfirmVolunteers: ConfirmVolunteers
-            , onClearDraftVolunteers: ClearDraftVolunteers
-            }
+        , formField "參與學生"
+            ( HH.div
+                [ HP.class_ (HH.ClassName "hour-record-students-field") ]
+                [ renderParticipantField
+                    { selectionTriggerLabel: "選擇學生"
+                    , volunteers: state.volunteers
+                    , selectedParticipantIds: state.selectedVolunteerIds
+                    , draftParticipantIds: state.draftVolunteerIds
+                    , selectedSeatPeriod: state.selectedSeatPeriod
+                    , isSeatPickerOpen: state.isSeatPickerOpen
+                    , isOtherStudentsOpen: state.isOtherStudentsOpen
+                    , participantError: state.participantError
+                    , selectedNames:
+                        state.volunteers
+                          # Array.filter (\volunteer -> Array.elem volunteer.id state.selectedVolunteerIds)
+                          # map _.name
+                          # String.joinWith ", "
+                    , onToggleSeatPicker: ToggleSeatPicker
+                    , onSelectSeatPeriod: SelectSeatPeriod
+                    , onToggleOtherParticipants: ToggleOtherStudents
+                    , onToggleDraftParticipants: ToggleDraftStudents
+                    , seatStageActions:
+                        [ { action: ConfirmVolunteers
+                          , btnLabel: "確認"
+                          , class_: Just "seat-confirm-button"
+                          }
+                        , { action: ClearDraftStudents
+                          , btnLabel: "清除"
+                          , class_: Just "seat-clear-button"
+                          }
+                        ]
+                    }
+                ]
+            )
         , HH.div
             [ HP.classes
                 [ HH.ClassName "form-field"
@@ -576,7 +590,7 @@ handleAction = case _ of
   SelectSeatPeriod value -> do
     modifyAndPersist _ { selectedSeatPeriod = fromApiValue_ value, isOtherStudentsOpen = false }
     H.liftEffect (saveSelectedSeatPeriod value)
-  ToggleDraftVolunteer id ->
+  ToggleDraftStudents id ->
     modifyAndPersist \state ->
       let
         volunteerIds =
@@ -591,7 +605,7 @@ handleAction = case _ of
           , participantError = if Array.null volunteerIds then Just "至少選擇一位學生" else Nothing
           }
   ToggleOtherStudents -> H.modify_ \state -> state { isOtherStudentsOpen = not state.isOtherStudentsOpen }
-  ClearDraftVolunteers ->
+  ClearDraftStudents ->
     modifyAndPersist
       _
         { draftVolunteerIds = []

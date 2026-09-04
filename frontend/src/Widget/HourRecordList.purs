@@ -14,6 +14,7 @@ import Domain.Activity (Activity, activityTypeLabel)
 import Domain.HourRecord (CopiedHourRecord, HourRecord)
 import Domain.Volunteer (Volunteer, seatForPeriod, formatUpdatedAt)
 import Domain.Seat (Seat, SeatPeriodType(..), seatPeriods, toApiValue, fromApiValue_)
+import Domain.StageAction (StageAction)
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import Halogen as H
@@ -29,6 +30,7 @@ import Widget.Selection.MultiSelect (renderMultiSelect)
 import Widget.SeatTable.MultiSelect (renderMultiSelectSeat)
 import Widget.SeatTable.Selection (volunteerWithGrade)
 import Widget.OutsideClick as OutsideClick
+import Widget.HourRecord.ParticipantField (renderParticipantField)
 
 type Slot id
   = forall query. H.Slot query Output id
@@ -89,6 +91,7 @@ data Action
   | ToggleActivityFilter
   | ToggleFilterVolunteer Int
   | ToggleFilterOtherStudents
+  | ToggleFilterDraftStudents Int
   | ToggleFilterActivity Int
   | SelectFilterSeatPeriod String
   | ApplyVolunteerFilter
@@ -489,6 +492,10 @@ handleAction = case _ of
     H.modify_ \state ->
       state
         { draftFilterActivityIds = toggleId id state.draftFilterActivityIds }
+  ToggleFilterDraftStudents id ->
+    H.modify_ \state ->
+      state
+        { draftFilterVolunteerIds = toggleId id state.draftFilterVolunteerIds }
   SelectFilterSeatPeriod value -> H.modify_ _ { filterSeatPeriod = fromApiValue_ value, isOtherStudentsOpen = false }
   ApplyVolunteerFilter -> do
     state <- H.get
@@ -523,71 +530,35 @@ renderVolunteerFilter state =
         # Array.filter (\volunteer -> Array.elem volunteer.id state.filterVolunteerIds)
         # map volunteerWithGrade
         # String.joinWith ", "
-
-    volunteersWithoutSeat =
-      state.volunteers
-        # Array.filter (\volunteer -> seatForPeriod state.filterSeatPeriod volunteer == Nothing)
   in
     HH.div
-      [ HP.classes
-          ( [ HH.ClassName "hour-record-filter" ]
-              <> if state.isVolunteerFilterOpen then [ HH.ClassName "seat-picker-open" ] else []
-          )
+      [ HP.class_ (HH.ClassName "hour-record-filter-students-field") ]
+      [ renderParticipantField
+          { selectionTriggerLabel: "篩選學生"
+          , volunteers: state.volunteers
+          , selectedParticipantIds: state.filterVolunteerIds
+          , draftParticipantIds: state.draftFilterVolunteerIds
+          , selectedSeatPeriod: state.filterSeatPeriod
+          , isSeatPickerOpen: state.isVolunteerFilterOpen
+          , isOtherStudentsOpen: state.isOtherStudentsOpen
+          , participantError: Nothing
+          , selectedNames: selectedNames
+          , onToggleSeatPicker: ToggleVolunteerFilter
+          , onSelectSeatPeriod: SelectFilterSeatPeriod
+          , onToggleOtherParticipants: ToggleFilterOtherStudents
+          , onToggleDraftParticipants: ToggleFilterDraftStudents
+          , seatStageActions:
+              [ { action: ApplyVolunteerFilter
+                , btnLabel: "套用"
+                , class_: Just "seat-confirm-button"
+                }
+              , { action: ClearVolunteerFilter
+                , btnLabel: "清除"
+                , class_: Just "seat-clear-button"
+                }
+              ]
+          }
       ]
-      [ HH.button
-          [ HP.class_ (HH.ClassName "seat-picker-trigger")
-          , HE.onClick \_ -> ToggleVolunteerFilter
-          ]
-          [ HH.text (if Array.null state.filterVolunteerIds then "篩選學生(全部)" else selectedNames) ]
-      , if state.isVolunteerFilterOpen then
-          HH.div
-            [ HP.class_ (HH.ClassName "seat-picker hour-record-filter-picker") ]
-            [ HH.label
-                [ HP.class_ (HH.ClassName "seat-bar") ]
-                [ HH.div
-                    [ HP.class_ (HH.ClassName "seat-period-select") ]
-                    [ HH.span_ [ HH.text "選學期" ]
-                    , HH.select
-                        [ HP.value (toApiValue state.filterSeatPeriod)
-                        , HE.onValueChange SelectFilterSeatPeriod
-                        ]
-                        (map seatPeriodOption seatPeriods)
-                    ]
-                , HH.div
-                    [ HP.class_ (HH.ClassName "participant-unseated-dropdown") ]
-                    [ HH.button
-                        [ HP.class_ (HH.ClassName "participant-unseated-trigger")
-                        , HE.onClick \_ -> ToggleFilterOtherStudents
-                        ]
-                        [ HH.span_ [ HH.text "其他學生" ]
-                        , HH.span_ [ HH.text if state.isOtherStudentsOpen then "▴" else "▾" ]
-                        ]
-                    , if state.isOtherStudentsOpen then
-                        renderMultiSelect
-                          { items: volunteersWithoutSeat
-                          , selectedIds: state.draftFilterVolunteerIds
-                          , itemId: _.id
-                          , renderLabel: volunteerWithGrade
-                          , onToggle: ToggleFilterVolunteer
-                          }
-                      else
-                        HH.text ""
-                    ]
-                ]
-            , renderSeatPickerLayout state.filterSeatPeriod
-                (Just ApplyVolunteerFilter)
-                (Just ClearVolunteerFilter)
-                "套用"
-                (renderMultiSelectSeat state.filterSeatPeriod state.volunteers state.draftFilterVolunteerIds ToggleFilterVolunteer)
-            ]
-        else
-          HH.text ""
-      ]
-  where
-  seatPeriodOption period =
-    HH.option
-      [ HP.value period.apiValue ]
-      [ HH.text period.displayName ]
 
 renderActivityFilter :: forall m. State -> H.ComponentHTML Action Slots m
 renderActivityFilter state =

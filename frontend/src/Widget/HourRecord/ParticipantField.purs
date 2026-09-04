@@ -8,6 +8,7 @@ import Data.Array as Array
 import Data.Maybe (Maybe(..))
 import Domain.Seat (SeatPeriodType, seatPeriods, toApiValue)
 import Domain.Volunteer (Volunteer, seatForPeriod)
+import Domain.StageAction (StageAction)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -18,9 +19,10 @@ import Widget.SeatTable.MultiSelect (renderMultiSelectSeat)
 import Widget.SeatTable.Selection (volunteerWithGrade)
 
 type ParticipantFieldConfig action
-  = { volunteers :: Array Volunteer
-    , selectedVolunteerIds :: Array Int
-    , draftVolunteerIds :: Array Int
+  = { selectionTriggerLabel :: String
+    , volunteers :: Array Volunteer
+    , selectedParticipantIds :: Array Int
+    , draftParticipantIds :: Array Int
     , selectedSeatPeriod :: SeatPeriodType
     , isSeatPickerOpen :: Boolean
     , isOtherStudentsOpen :: Boolean
@@ -28,10 +30,9 @@ type ParticipantFieldConfig action
     , selectedNames :: String
     , onToggleSeatPicker :: action
     , onSelectSeatPeriod :: String -> action
-    , onToggleOtherStudents :: action
-    , onToggleDraftVolunteer :: Int -> action
-    , onConfirmVolunteers :: action
-    , onClearDraftVolunteers :: action
+    , onToggleOtherParticipants :: action
+    , onToggleDraftParticipants :: Int -> action
+    , seatStageActions :: Array (StageAction action)
     }
 
 renderParticipantField :: forall action slots m. ParticipantFieldConfig action -> H.ComponentHTML action slots m
@@ -52,22 +53,16 @@ renderParticipantField config =
   in
     HH.div
       [ HP.classes
-          ( [ HH.ClassName "form-field"
-            , HH.ClassName "seat-field"
-            , HH.ClassName "hour-record-participant-field"
-            ]
-              <> if config.isSeatPickerOpen then
-                  [ HH.ClassName "seat-picker-open" ]
+          if config.isSeatPickerOpen then
+            [ HH.ClassName "seat-picker-open" ]
+          else
+            []
+              <> if config.participantError /= Nothing then
+                  [ HH.ClassName "students-field-error" ] -- 只會生效於.student-form-card
                 else
                   []
-                    <> if config.participantError /= Nothing then
-                        [ HH.ClassName "participant-field-error" ]
-                      else
-                        []
-          )
       ]
-      [ HH.span_ [ HH.text "參與學生" ]
-      , HH.button
+      [ HH.button
           [ HP.class_ (HH.ClassName "seat-picker-trigger")
           , HE.onClick \_ -> config.onToggleSeatPicker
           ]
@@ -76,8 +71,8 @@ renderParticipantField config =
               , HP.attr (HH.AttrName "title") config.selectedNames
               ]
               [ HH.text
-                  if Array.null config.selectedVolunteerIds then
-                    "選擇學生"
+                  if Array.null config.selectedParticipantIds then
+                    config.selectionTriggerLabel
                   else
                     config.selectedNames
               ]
@@ -100,7 +95,7 @@ renderParticipantField config =
                   [ HP.class_ (HH.ClassName "participant-unseated-dropdown") ]
                   [ HH.button
                       [ HP.class_ (HH.ClassName "participant-unseated-trigger")
-                      , HE.onClick \_ -> config.onToggleOtherStudents
+                      , HE.onClick \_ -> config.onToggleOtherParticipants
                       ]
                       [ HH.span_ [ HH.text "其他學生" ]
                       , HH.span_ [ HH.text if config.isOtherStudentsOpen then "▴" else "▾" ]
@@ -108,20 +103,19 @@ renderParticipantField config =
                   , if config.isOtherStudentsOpen then
                       renderMultiSelect
                         { items: volunteersWithoutSeat
-                        , selectedIds: config.draftVolunteerIds
+                        , selectedIds: config.draftParticipantIds
                         , itemId: _.id
                         , renderLabel: volunteerWithGrade
-                        , onToggle: config.onToggleDraftVolunteer
+                        , onToggle: config.onToggleDraftParticipants
                         }
                     else
                       HH.text ""
                   ]
               ]
-          , renderSeatPickerLayout config.selectedSeatPeriod
-              (Just config.onConfirmVolunteers)
-              (Just config.onClearDraftVolunteers)
-              "確認"
-              (renderMultiSelectSeat config.selectedSeatPeriod config.volunteers config.draftVolunteerIds config.onToggleDraftVolunteer)
+          , renderSeatPickerLayout
+              config.selectedSeatPeriod
+              config.seatStageActions
+              (renderMultiSelectSeat config.selectedSeatPeriod config.volunteers config.draftParticipantIds config.onToggleDraftParticipants)
           ]
       ]
 
