@@ -423,7 +423,6 @@ body:has(.daily-activity-page) {
   display: grid;
   gap: 8px;
   color: #365b54;
-  font-size: 14px;
   font-weight: 700;
 }
 
@@ -667,7 +666,8 @@ body:has(.daily-activity-page) {
   font-weight: 800;
 }
 
-.seat-button:hover {
+.seat-button:hover, /* 游標在按鈕上 */
+.seat-button-selected { /* 選中 */
   border-color: #25796b;
   background: #25796b;
   color: #fff;
@@ -2045,11 +2045,6 @@ body:has(.daily-activity-page) {
   box-shadow: 0 12px 28px rgba(31, 84, 74, 0.13);
 }
 
-.seat-button-selected {
-  border-color: #25796b;
-  background: #25796b;
-  color: #fff;
-}
 
 .student-delete-button {
   min-height: 34px;
@@ -2230,7 +2225,7 @@ body:has(.daily-activity-page) {
   width: 320px;
 }
 
-.hour-record-filter-students-field .seat-picker-trigger
+.hour-record-filter-students-field .seat-picker-trigger,
 .hour-record-filter-activity-field .seat-picker-trigger {
   max-width: 240px;
 }
@@ -2392,6 +2387,8 @@ body:has(.daily-activity-page) {
   gap: 6px;
   justify-self: start;
   align-items: center;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .participant-seat-stage {

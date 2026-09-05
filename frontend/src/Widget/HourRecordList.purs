@@ -337,7 +337,7 @@ renderDeleteDialog selectedCount =
 handleAction :: forall m. MonadEffect m => Action -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
   Initialize -> do
-    void $ H.subscribe (ClickedOutsideSeatPicker <$ OutsideClick.outsideClickEmitter ".seat-picker")
+    void $ H.subscribe (ClickedOutsideSeatPicker <$ OutsideClick.outsideClickEmitter ".hour-record-filter-students-field")
     void $ H.subscribe (ClickedOutsideOtherStudents <$ OutsideClick.outsideClickEmitter ".participant-unseated-dropdown")
     void
       $ H.subscribe
@@ -544,7 +544,7 @@ renderActivityFilter state =
           [ HP.class_ (HH.ClassName "seat-picker-trigger")
           , HE.onClick \_ -> ToggleActivityFilter
           ]
-          [ HH.text (if Array.null state.filterActivityIds then "篩選活動(全部)" else selectedNames) ]
+          [ HH.text (if Array.null state.filterActivityIds then "篩選活動" else selectedNames) ]
       , if state.isActivityFilterOpen then
           HH.div
             [ HP.class_ (HH.ClassName "activity-dropdown") ]

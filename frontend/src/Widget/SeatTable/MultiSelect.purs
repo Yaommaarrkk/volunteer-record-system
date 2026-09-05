@@ -21,7 +21,7 @@ renderMultiSelectSeat period volunteers selectedIds onToggle seat = case volunte
       [ HP.classes
           ( [ HH.ClassName "seat-button" ]
               <> if Array.elem volunteer.id selectedIds then
-                  [ HH.ClassName "seat-selected" ]
+                  [ HH.ClassName "seat-button-selected" ]
                 else
                   []
           )
