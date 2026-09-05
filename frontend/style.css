@@ -506,8 +506,8 @@ body:has(.daily-activity-page) {
   transform: translateX(-50%); /* 左右置中 */
 }
 
-.filter-button .seat-picker, /* 登錄歷史 - 篩選學生懸浮框 */
-.filter-button .activity-picker { /* 登錄歷史 -  篩選活動懸浮框 */
+.hour-record-filter-field .seat-picker, /* 登錄歷史 - 篩選學生懸浮框 */
+.hour-record-filter-field .activity-picker { /* 登錄歷史 -  篩選活動懸浮框 */
   left: 0; /* 左對齊 */
 }
 
@@ -889,7 +889,7 @@ body:has(.daily-activity-page) {
 
 .list-heading {
   align-items: center;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
 .activity-list-filter {
@@ -2216,17 +2216,19 @@ body:has(.daily-activity-page) {
 
 .hour-record-students-field,
 .hour-record-hours-field,
-.hour-record-filter-students-field,
-.hour-record-filter-activity-field {
+.hour-record-filter-field {
   position: relative;
+}
+
+.hour-record-filter-field {
+  margin-top: 7px;
 }
 
 .hour-record-students-field .seat-picker-trigger {
   width: 320px;
 }
 
-.hour-record-filter-students-field .seat-picker-trigger,
-.hour-record-filter-activity-field .seat-picker-trigger {
+.hour-record-filter-field .seat-picker-trigger {
   max-width: 240px;
 }
 
@@ -2351,17 +2353,6 @@ body:has(.daily-activity-page) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.hour-record-filter {
-  position: relative;
-  width: fit-content;
-  max-width: 100%;
-  margin-top: 10px;
-}
-
-.hour-record-filter.seat-picker-open {
-  z-index: 5;
 }
 
 .seat-bar {
@@ -2676,7 +2667,7 @@ body:has(.daily-activity-page) {
   color: #fff;
 }
 
-.filter-button,
+.hour-record-filter-field,
 .activity-color-option-gap {
   display: flex;
   align-items: center;

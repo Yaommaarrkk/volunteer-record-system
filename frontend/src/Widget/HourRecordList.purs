@@ -157,7 +157,7 @@ render state =
             [ HH.h2_ [ HH.text "登錄歷史" ]
             , HH.p_ [ HH.text "點左側方框可多選；Ctrl 跳選；Shift 連續選取" ]
             , HH.div
-                [ HP.class_ (HH.ClassName "filter-button") ]
+                [ HP.class_ (HH.ClassName "hour-record-filter-field") ]
                 [ renderVolunteerFilter state
                 , renderActivityFilter state
                 ]
@@ -536,7 +536,7 @@ renderActivityFilter state =
   in
     HH.div
       [ HP.classes
-          ( [ HH.ClassName "hour-record-filter" ]
+          ( [ HH.ClassName "hour-record-filter-activity-field" ]
               <> if state.isActivityFilterOpen then [ HH.ClassName "seat-picker-open" ] else []
           )
       ]
