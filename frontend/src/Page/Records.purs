@@ -197,8 +197,8 @@ render state =
         { activities: state.activities
         , records: state.records
         , volunteers: state.volunteers
-        , filterVolunteerIds: state.historyVolunteerIds
-        , filterActivityIds: state.historyActivityIds
+        , draftFilterVolunteerIds: state.historyVolunteerIds
+        , draftFilterActivityIds: state.historyActivityIds
         , totalRecords: state.totalRecords
         , isLoading: state.isLoading
         , isLoadingMore: state.isLoadingMore

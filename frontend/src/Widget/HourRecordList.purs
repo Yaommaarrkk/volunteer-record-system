@@ -25,9 +25,6 @@ import Halogen.Subscription as HS
 import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent (MouseEvent)
 import Web.UIEvent.MouseEvent as MouseEvent
-import Widget.SeatPicker (renderSeatPickerLayout)
-import Widget.Selection.MultiSelect (renderMultiSelect)
-import Widget.SeatTable.MultiSelect (renderMultiSelectSeat)
 import Widget.SeatTable.Selection (volunteerWithGrade)
 import Widget.OutsideClick as OutsideClick
 import Widget.HourRecord.ParticipantField (renderParticipantField)
@@ -43,8 +40,8 @@ type Input
   = { activities :: Array Activity
     , records :: Array HourRecord
     , volunteers :: Array Volunteer
-    , filterVolunteerIds :: Array Int
-    , filterActivityIds :: Array Int
+    , draftFilterVolunteerIds :: Array Int
+    , draftFilterActivityIds :: Array Int
     , totalRecords :: Int
     , isLoading :: Boolean
     , isLoadingMore :: Boolean
@@ -88,11 +85,10 @@ data Action
   | CancelDelete
   | ConfirmDelete
   | ToggleVolunteerFilter
-  | ToggleActivityFilter
-  | ToggleFilterVolunteer Int
   | ToggleFilterOtherStudents
   | ToggleFilterDraftStudents Int
-  | ToggleFilterActivity Int
+  | ToggleActivityFilter
+  | ToggleFilterDraftActivity Int
   | SelectFilterSeatPeriod String
   | ApplyVolunteerFilter
   | ClearVolunteerFilter
@@ -122,10 +118,10 @@ component =
           { activities: input.activities
           , records: input.records
           , volunteers: input.volunteers
-          , filterVolunteerIds: input.filterVolunteerIds
-          , filterActivityIds: input.filterActivityIds
-          , draftFilterVolunteerIds: input.filterVolunteerIds
-          , draftFilterActivityIds: input.filterActivityIds
+          , filterVolunteerIds: []
+          , filterActivityIds: []
+          , draftFilterVolunteerIds: input.draftFilterVolunteerIds
+          , draftFilterActivityIds: input.draftFilterActivityIds
           , filterSeatPeriod: Year114SecondSemester
           , isVolunteerFilterOpen: false
           , isActivityFilterOpen: false
@@ -357,8 +353,8 @@ handleAction = case _ of
         { activities = input.activities
         , records = input.records
         , volunteers = input.volunteers
-        , filterVolunteerIds = input.filterVolunteerIds
-        , filterActivityIds = input.filterActivityIds
+        , draftFilterVolunteerIds = input.draftFilterVolunteerIds
+        , draftFilterActivityIds = input.draftFilterActivityIds
         , totalRecords = input.totalRecords
         , isLoading = input.isLoading
         , isLoadingMore = input.isLoadingMore
@@ -368,16 +364,6 @@ handleAction = case _ of
           Array.filter
             (\id -> Array.any (\record -> record.id == id) input.records)
             state.selectedIds
-        , draftFilterVolunteerIds =
-          if state.isVolunteerFilterOpen then
-            state.draftFilterVolunteerIds
-          else
-            input.filterVolunteerIds
-        , draftFilterActivityIds =
-          if state.isActivityFilterOpen then
-            state.draftFilterActivityIds
-          else
-            input.filterActivityIds
         }
   ViewportChanged -> do
     state <- H.get
@@ -464,38 +450,28 @@ handleAction = case _ of
       pure unit
     else
       H.raise (DeleteRequested state.selectedIds)
-  ToggleVolunteerFilter ->  -- 若已開則全關 若未開則開啟並關閉其他學生選單
+  ToggleVolunteerFilter ->  -- SeatPicker(懸浮窗)總開關
     H.modify_ \state ->
-      if state.isVolunteerFilterOpen then
-        state { isVolunteerFilterOpen = false, isOtherStudentsOpen = false }
-      else
-        state
-          { isVolunteerFilterOpen = true
-          , isOtherStudentsOpen = false
-          , draftFilterVolunteerIds = state.filterVolunteerIds
-          }
-  ToggleActivityFilter ->
+      state
+        { isVolunteerFilterOpen = not state.isVolunteerFilterOpen
+        , isOtherStudentsOpen = false
+        }
+  ToggleFilterOtherStudents ->  -- 其他學生(懸浮窗)總開關
     H.modify_ \state ->
-      if state.isActivityFilterOpen then
-        state { isActivityFilterOpen = false }
-      else
-        state
-          { isActivityFilterOpen = true
-          , draftFilterActivityIds = state.filterActivityIds
-          }
-  ToggleFilterVolunteer id ->
+      state
+        { isOtherStudentsOpen = not state.isOtherStudentsOpen }
+  ToggleFilterDraftStudents id ->  -- 單一學生選取/取消選取
     H.modify_ \state ->
       state
         { draftFilterVolunteerIds = toggleId id state.draftFilterVolunteerIds }
-  ToggleFilterOtherStudents -> H.modify_ \state -> state { isOtherStudentsOpen = not state.isOtherStudentsOpen }
-  ToggleFilterActivity id ->
+  ToggleActivityFilter ->
+    H.modify_ \state ->
+      state
+        { isActivityFilterOpen = not state.isActivityFilterOpen }
+  ToggleFilterDraftActivity id ->  -- 單一學活動選取/取消選取
     H.modify_ \state ->
       state
         { draftFilterActivityIds = toggleId id state.draftFilterActivityIds }
-  ToggleFilterDraftStudents id ->
-    H.modify_ \state ->
-      state
-        { draftFilterVolunteerIds = toggleId id state.draftFilterVolunteerIds }
   SelectFilterSeatPeriod value -> H.modify_ _ { filterSeatPeriod = fromApiValue_ value, isOtherStudentsOpen = false }
   ApplyVolunteerFilter -> do
     state <- H.get
@@ -524,41 +500,32 @@ handleAction = case _ of
 
 renderVolunteerFilter :: forall m. State -> H.ComponentHTML Action Slots m
 renderVolunteerFilter state =
-  let
-    selectedNames =
-      state.volunteers
-        # Array.filter (\volunteer -> Array.elem volunteer.id state.filterVolunteerIds)
-        # map volunteerWithGrade
-        # String.joinWith ", "
-  in
-    HH.div
-      [ HP.class_ (HH.ClassName "hour-record-filter-students-field") ]
-      [ renderParticipantField
-          { selectionTriggerLabel: "篩選學生"
-          , volunteers: state.volunteers
-          , selectedParticipantIds: state.filterVolunteerIds
-          , draftParticipantIds: state.draftFilterVolunteerIds
-          , selectedSeatPeriod: state.filterSeatPeriod
-          , isSeatPickerOpen: state.isVolunteerFilterOpen
-          , isOtherStudentsOpen: state.isOtherStudentsOpen
-          , participantError: Nothing
-          , selectedNames: selectedNames
-          , onToggleSeatPicker: ToggleVolunteerFilter
-          , onSelectSeatPeriod: SelectFilterSeatPeriod
-          , onToggleOtherParticipants: ToggleFilterOtherStudents
-          , onToggleDraftParticipants: ToggleFilterDraftStudents
-          , seatStageActions:
-              [ { action: ApplyVolunteerFilter
-                , btnLabel: "套用"
-                , class_: Just "seat-confirm-button"
-                }
-              , { action: ClearVolunteerFilter
-                , btnLabel: "清除"
-                , class_: Just "seat-clear-button"
-                }
-              ]
-          }
-      ]
+  HH.div
+    [ HP.class_ (HH.ClassName "hour-record-filter-students-field") ]
+    [ renderParticipantField
+        { selectionTriggerLabel: "篩選學生"
+        , volunteers: state.volunteers
+        , selectedParticipantIds: state.draftFilterVolunteerIds
+        , selectedSeatPeriod: state.filterSeatPeriod
+        , isSeatPickerOpen: state.isVolunteerFilterOpen
+        , isOtherStudentsOpen: state.isOtherStudentsOpen
+        , participantError: Nothing
+        , onToggleSeatPicker: ToggleVolunteerFilter
+        , onSelectSeatPeriod: SelectFilterSeatPeriod
+        , onToggleOtherParticipants: ToggleFilterOtherStudents
+        , onToggleDraftParticipants: ToggleFilterDraftStudents
+        , seatStageActions:
+            [ { action: ApplyVolunteerFilter
+              , btnLabel: "套用"
+              , class_: Just "seat-confirm-button"
+              }
+            , { action: ClearVolunteerFilter
+              , btnLabel: "清除"
+              , class_: Just "seat-clear-button"
+              }
+            ]
+        }
+    ]
 
 renderActivityFilter :: forall m. State -> H.ComponentHTML Action Slots m
 renderActivityFilter state =
@@ -608,16 +575,6 @@ renderActivityFilter state =
           HH.text ""
       ]
 
-renderFilterVolunteerOption :: forall m. Array Int -> Volunteer -> H.ComponentHTML Action Slots m
-renderFilterVolunteerOption selectedIds volunteer =
-  renderMultiSelect
-    { items: [ volunteer ]
-    , selectedIds
-    , itemId: _.id
-    , renderLabel: volunteerWithGrade
-    , onToggle: ToggleFilterVolunteer
-    }
-
 renderFilterActivityOption :: forall m. Array Int -> Activity -> H.ComponentHTML Action Slots m
 renderFilterActivityOption selectedIds activity =
   HH.button
@@ -628,7 +585,7 @@ renderFilterActivityOption selectedIds activity =
               else
                 []
         )
-    , HE.onClick \_ -> ToggleFilterActivity activity.id
+    , HE.onClick \_ -> ToggleFilterDraftActivity activity.id
     ]
     [ HH.div
         [ HP.class_ (HH.ClassName "activity-color-option-gap") ]

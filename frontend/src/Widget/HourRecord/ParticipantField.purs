@@ -6,6 +6,7 @@ module Widget.HourRecord.ParticipantField
 import Prelude
 import Data.Array as Array
 import Data.Maybe (Maybe(..))
+import Data.String.Common as String
 import Domain.Seat (SeatPeriodType, seatPeriods, toApiValue)
 import Domain.Volunteer (Volunteer, seatForPeriod)
 import Domain.StageAction (StageAction)
@@ -22,16 +23,14 @@ type ParticipantFieldConfig action
   = { selectionTriggerLabel :: String
     , volunteers :: Array Volunteer
     , selectedParticipantIds :: Array Int
-    , draftParticipantIds :: Array Int
     , selectedSeatPeriod :: SeatPeriodType
     , isSeatPickerOpen :: Boolean
     , isOtherStudentsOpen :: Boolean
     , participantError :: Maybe String
-    , selectedNames :: String
-    , onToggleSeatPicker :: action
+    , onToggleSeatPicker :: action -- SeatPicker(懸浮窗)總開關
     , onSelectSeatPeriod :: String -> action
-    , onToggleOtherParticipants :: action
-    , onToggleDraftParticipants :: Int -> action
+    , onToggleOtherParticipants :: action -- 其他學生(懸浮窗)總開關
+    , onToggleDraftParticipants :: Int -> action -- 單一學生選取/取消選取
     , seatStageActions :: Array (StageAction action)
     }
 
@@ -50,6 +49,12 @@ renderParticipantField config =
       HH.option
         [ HP.value period.apiValue ]
         [ HH.text period.displayName ]
+
+    selectedNames =
+      config.volunteers
+        # Array.filter (\volunteer -> Array.elem volunteer.id config.selectedParticipantIds)
+        # map _.name
+        # String.joinWith ", "
   in
     HH.div
       [ HP.classes
@@ -68,13 +73,13 @@ renderParticipantField config =
           ]
           [ HH.span
               [ HP.class_ (HH.ClassName "selection-trigger-label")
-              , HP.attr (HH.AttrName "title") config.selectedNames
+              , HP.attr (HH.AttrName "title") selectedNames
               ]
               [ HH.text
                   if Array.null config.selectedParticipantIds then
                     config.selectionTriggerLabel
                   else
-                    config.selectedNames
+                    selectedNames
               ]
           ]
       , renderFieldError config.participantError
@@ -103,7 +108,7 @@ renderParticipantField config =
                   , if config.isOtherStudentsOpen then
                       renderMultiSelect
                         { items: volunteersWithoutSeat
-                        , selectedIds: config.draftParticipantIds
+                        , selectedIds: config.selectedParticipantIds
                         , itemId: _.id
                         , renderLabel: volunteerWithGrade
                         , onToggle: config.onToggleDraftParticipants
@@ -115,7 +120,7 @@ renderParticipantField config =
           , renderSeatPickerLayout
               config.selectedSeatPeriod
               config.seatStageActions
-              (renderMultiSelectSeat config.selectedSeatPeriod config.volunteers config.draftParticipantIds config.onToggleDraftParticipants)
+              (renderMultiSelectSeat config.selectedSeatPeriod config.volunteers config.selectedParticipantIds config.onToggleDraftParticipants)
           ]
       ]
 

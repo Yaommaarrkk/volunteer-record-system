@@ -96,7 +96,6 @@ type State
     , hoursText :: String
     , note :: String
     , selectedVolunteerIds :: Array Int
-    , draftVolunteerIds :: Array Int
     , selectedSeatPeriod :: SeatPeriodType
     , isSeatPickerOpen :: Boolean
     , isOtherStudentsOpen :: Boolean
@@ -157,7 +156,6 @@ initialState input =
     , hoursText: ""
     , note: ""
     , selectedVolunteerIds: []
-    , draftVolunteerIds: []
     , selectedSeatPeriod: Year114SecondSemester
     , isSeatPickerOpen: false
     , isOtherStudentsOpen: false
@@ -207,16 +205,10 @@ render state =
                     { selectionTriggerLabel: "選擇學生"
                     , volunteers: state.volunteers
                     , selectedParticipantIds: state.selectedVolunteerIds
-                    , draftParticipantIds: state.draftVolunteerIds
                     , selectedSeatPeriod: state.selectedSeatPeriod
                     , isSeatPickerOpen: state.isSeatPickerOpen
                     , isOtherStudentsOpen: state.isOtherStudentsOpen
                     , participantError: state.participantError
-                    , selectedNames:
-                        state.volunteers
-                          # Array.filter (\volunteer -> Array.elem volunteer.id state.selectedVolunteerIds)
-                          # map _.name
-                          # String.joinWith ", "
                     , onToggleSeatPicker: ToggleSeatPicker
                     , onSelectSeatPeriod: SelectSeatPeriod
                     , onToggleOtherParticipants: ToggleOtherStudents
@@ -505,7 +497,6 @@ handleAction = case _ of
         , hoursText = if hasNewCopy then fromMaybe state.hoursText (input.copiedRecord <#> \record -> show record.hours) else state.hoursText
         , note = if hasNewCopy then fromMaybe state.note (input.copiedRecord <#> _.note) else state.note
         , selectedVolunteerIds = if shouldClearParticipants then [] else state.selectedVolunteerIds
-        , draftVolunteerIds = if shouldClearParticipants then [] else state.draftVolunteerIds
         , participantError = if shouldClearParticipants then Nothing else state.participantError
         , isSubmitting = input.isSubmitting
         , isHoursPickerOpen = if hasSuccessfulSubmit then false else state.isHoursPickerOpen
@@ -584,7 +575,6 @@ handleAction = case _ of
           { isSeatPickerOpen = true
           , isOtherStudentsOpen = false
           , isHoursPickerOpen = false
-          , draftVolunteerIds = state.selectedVolunteerIds
           }
   CloseSeatPicker -> H.modify_ _ { isSeatPickerOpen = false, isOtherStudentsOpen = false }
   SelectSeatPeriod value -> do
@@ -594,22 +584,20 @@ handleAction = case _ of
     modifyAndPersist \state ->
       let
         volunteerIds =
-          if Array.elem id state.draftVolunteerIds then
-            Array.filter (_ /= id) state.draftVolunteerIds
+          if Array.elem id state.selectedVolunteerIds then
+            Array.filter (_ /= id) state.selectedVolunteerIds
           else
-            Array.snoc state.draftVolunteerIds id
+            Array.snoc state.selectedVolunteerIds id
       in
         state
-          { draftVolunteerIds = volunteerIds
-          , selectedVolunteerIds = volunteerIds
+          { selectedVolunteerIds = volunteerIds
           , participantError = if Array.null volunteerIds then Just "至少選擇一位學生" else Nothing
           }
   ToggleOtherStudents -> H.modify_ \state -> state { isOtherStudentsOpen = not state.isOtherStudentsOpen }
   ClearDraftStudents ->
     modifyAndPersist
       _
-        { draftVolunteerIds = []
-        , selectedVolunteerIds = []
+        { selectedVolunteerIds = []
         , participantError = Just "至少選擇一位學生"
         }
   ConfirmVolunteers -> H.modify_ _ { isSeatPickerOpen = false, isOtherStudentsOpen = false }
@@ -688,7 +676,6 @@ restoreSavedDraft draft state =
     , hoursText = draft.hoursText
     , note = draft.note
     , selectedVolunteerIds = draft.volunteerIds
-    , draftVolunteerIds = draft.volunteerIds
     , selectedSeatPeriod = fromApiValue_ draft.seatPeriod
     , clearParticipantsAfterSubmit = draft.clearParticipantsAfterSubmit
     }
