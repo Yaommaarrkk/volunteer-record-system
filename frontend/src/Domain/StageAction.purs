@@ -2,7 +2,7 @@ module Domain.StageAction
   ( StageAction
   ) where
 
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe)
 
 type StageAction action
   = { action :: action

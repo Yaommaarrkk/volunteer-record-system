@@ -12,9 +12,8 @@ import Data.Maybe (Maybe(..))
 import Data.String.Common as String
 import Domain.Activity (Activity, activityTypeLabel)
 import Domain.HourRecord (CopiedHourRecord, HourRecord)
-import Domain.Volunteer (Volunteer, seatForPeriod, formatUpdatedAt)
-import Domain.Seat (Seat, SeatPeriodType(..), seatPeriods, toApiValue, fromApiValue_)
-import Domain.StageAction (StageAction)
+import Domain.Volunteer (Volunteer, formatUpdatedAt)
+import Domain.Seat (SeatPeriodType(..), fromApiValue_)
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
 import Halogen as H
@@ -25,7 +24,6 @@ import Halogen.Subscription as HS
 import Web.Event.Event as Event
 import Web.UIEvent.MouseEvent (MouseEvent)
 import Web.UIEvent.MouseEvent as MouseEvent
-import Widget.SeatTable.Selection (volunteerWithGrade)
 import Widget.OutsideClick as OutsideClick
 import Widget.HourRecord.ParticipantField (renderParticipantField)
 

@@ -3,8 +3,7 @@ module Widget.SeatPicker
   ) where
 
 import Prelude
-import Data.Array as Array
-import Data.Maybe (Maybe, fromMaybe)
+import Data.Maybe (fromMaybe)
 import Domain.Seat (PodiumDirection(..), Seat, SeatPeriodType, deltaCol, podiumDirectionForPeriod, seatsForPeriod)
 import Domain.StageAction (StageAction)
 import Halogen as H

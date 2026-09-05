@@ -13,7 +13,6 @@ import Data.String.Common as String
 import Domain.EducationLevel (EducationLevel(..), educationLevelToApi)
 import Domain.Volunteer (SeatAssignment, ageToGradeLabel, showSeat)
 import Domain.Seat (Seat, SeatPeriodType(..), toApiValue, displayName)
-import Domain.StageAction (StageAction)
 import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
