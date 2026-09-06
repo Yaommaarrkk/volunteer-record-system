@@ -26,6 +26,8 @@ import Web.UIEvent.MouseEvent (MouseEvent)
 import Web.UIEvent.MouseEvent as MouseEvent
 import Widget.OutsideClick as OutsideClick
 import Widget.HourRecord.ParticipantField (renderParticipantField)
+import Widget.SeatPicker (renderStageAction)
+import Widget.Selection.MultiSelect (renderMultiSelect)
 
 type Slot id
   = forall query. H.Slot query Output id
@@ -74,6 +76,7 @@ data Action
   | Receive Input
   | ClickedOutsideSeatPicker
   | ClickedOutsideOtherStudents
+  | ClickedOutsideActivityPicker
   | ViewportChanged
   | SelectRecord Int MouseEvent
   | ToggleRecord Int Int MouseEvent
@@ -339,12 +342,14 @@ handleAction = case _ of
   Initialize -> do
     void $ H.subscribe (ClickedOutsideSeatPicker <$ OutsideClick.outsideClickEmitter ".hour-record-filter-students-field")
     void $ H.subscribe (ClickedOutsideOtherStudents <$ OutsideClick.outsideClickEmitter ".participant-unseated-dropdown")
+    void $ H.subscribe (ClickedOutsideActivityPicker <$ OutsideClick.outsideClickEmitter ".hour-record-filter-activity-field")
     void
       $ H.subscribe
       $ ViewportChanged
       <$ HS.makeEmitter subscribeWindowScroll
   ClickedOutsideSeatPicker -> H.modify_ _ { isVolunteerFilterOpen = false }
   ClickedOutsideOtherStudents -> H.modify_ _ { isOtherStudentsOpen = false }
+  ClickedOutsideActivityPicker -> H.modify_ _ { isActivityFilterOpen = false }
   Receive input -> do
     H.modify_ \state ->
       state
@@ -533,6 +538,38 @@ renderActivityFilter state =
         # Array.filter (\activity -> Array.elem activity.id state.filterActivityIds)
         # map _.name
         # String.joinWith ", "
+
+    seatStageActions =
+      [ { action: ApplyActivityFilter
+        , btnLabel: "套用"
+        , class_: Just "seat-confirm-button"
+        }
+      , { action: ClearActivityFilter
+        , btnLabel: "清除"
+        , class_: Just "seat-clear-button"
+        }
+      ]
+
+    stage =
+      HH.div
+        [ HP.class_ (HH.ClassName "seat-layout-top seat-stage") ]
+        [ HH.div
+            [ HP.class_ (HH.ClassName "seat-stage-actions") ]
+            (map renderStageAction seatStageActions)
+        ]
+
+    itemRenderFunc activity =
+      HH.div
+        [ HP.class_ (HH.ClassName "activity-color-option-gap") ]
+        [ HH.span
+            [ HP.class_ (HH.ClassName "hour-record-type-tag")
+            , HP.style ("background-color: " <> activity.tagColor)
+            ]
+            [ HH.text (activityTypeLabel activity.defaultType) ]
+        , HH.div
+            [ HP.class_ (HH.ClassName "activity-color-option-name") ]
+            [ HH.text activity.name ]
+        ]
   in
     HH.div
       [ HP.classes
@@ -546,57 +583,18 @@ renderActivityFilter state =
           ]
           [ HH.text (if Array.null state.filterActivityIds then "篩選活動" else selectedNames) ]
       , if state.isActivityFilterOpen then
-          HH.div
-            [ HP.class_ (HH.ClassName "activity-dropdown") ]
-            [ if state.isActivityFilterOpen then
-                HH.div
-                  [ HP.class_ (HH.ClassName "activity-picker") ]
-                  ( if Array.null state.activities then
-                      [ HH.p_ [ HH.text "沒有活動" ] ]
-                    else
-                      [ HH.div
-                          [ HP.classes
-                              [ HH.ClassName "participant-seat-actions"
-                              , HH.ClassName "activity-filter-actions"
-                              ]
-                          ]
-                          [ HH.button [ HP.class_ (HH.ClassName "seat-confirm-button"), HE.onClick \_ -> ApplyActivityFilter ] [ HH.text "套用" ]
-                          , HH.button [ HP.class_ (HH.ClassName "seat-clear-button"), HE.onClick \_ -> ClearActivityFilter ] [ HH.text "清除" ]
-                          ]
-                      ]
-                        <> map (renderFilterActivityOption state.draftFilterActivityIds) state.activities -- 產生選項們
-                  )
-              else
-                HH.text ""
-            ]
+          renderMultiSelect
+            { items: state.activities
+            , selectedIds: state.draftFilterActivityIds
+            , itemId: _.id
+            , renderBar: stage -- 選項前的橫條
+            , itemRenderFunc: itemRenderFunc
+            , onToggle: ToggleFilterDraftActivity
+            , noItemsLabel: "沒有活動"
+            }
         else
           HH.text ""
       ]
-
-renderFilterActivityOption :: forall m. Array Int -> Activity -> H.ComponentHTML Action Slots m
-renderFilterActivityOption selectedIds activity =
-  HH.button
-    [ HP.classes
-        ( [ HH.ClassName "participant-unseated-option" ]
-            <> if Array.elem activity.id selectedIds then
-                [ HH.ClassName "participant-unseated-option-selected" ]
-              else
-                []
-        )
-    , HE.onClick \_ -> ToggleFilterDraftActivity activity.id
-    ]
-    [ HH.div
-        [ HP.class_ (HH.ClassName "activity-color-option-gap") ]
-        [ HH.span
-            [ HP.class_ (HH.ClassName "hour-record-type-tag")
-            , HP.style ("background-color: " <> activity.tagColor)
-            ]
-            [ HH.text (activityTypeLabel activity.defaultType) ]
-        , HH.div
-            [ HP.class_ (HH.ClassName "activity-color-option-name") ]
-            [ HH.text activity.name ]
-        ]
-    ]
 
 toggleId :: Int -> Array Int -> Array Int
 toggleId id ids = if Array.elem id ids then Array.filter (_ /= id) ids else Array.snoc ids id

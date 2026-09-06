@@ -465,8 +465,6 @@ body:has(.daily-activity-page) {
   font-weight: 800;
 }
 
-
-
 .seat-picker-backdrop {
   position: fixed;
   z-index: 2;
@@ -494,25 +492,34 @@ body:has(.daily-activity-page) {
   transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
 }
 
-.hour-record-page .seat-picker,
-.hour-record-page .hour-record-hours-picker {
+.seat-field .seat-picker{
+  left: 50%; /* 左右置中 */
+  transform: translateX(-50%); /* 左右置中 */
+}
+
+.master-data-students-page .seat-picker, /* 添加學生 - 座位選擇懸浮框 */
+.hour-record-page .seat-picker, /* 登錄時數條 - 參與學生懸浮框 */
+.hour-record-page .hour-record-hours-picker { /* 登錄時數條 - 時數懸浮框 */
   pointer-events: auto;
   transform: translateY(0);
   z-index: 3;
 }
 
-.seat-field .seat-picker{ /* 登錄時數條 - 參與學生懸浮框 */
-  left: 50%; /* 左右置中 */
-  transform: translateX(-50%); /* 左右置中 */
-}
 
 .hour-record-filter-field .seat-picker, /* 登錄歷史 - 篩選學生懸浮框 */
-.hour-record-filter-field .activity-picker { /* 登錄歷史 -  篩選活動懸浮框 */
+.hour-record-filter-activity-field .other-students-picker { /* 登錄歷史 - 篩選活動懸浮框 */
   left: 0; /* 左對齊 */
+  transform: none; /* 左對齊 */
+}
+
+.hour-record-filter-activity-field .other-students-picker { /* 登錄歷史 - 篩選活動懸浮框 */
+  width: 220px;
 }
 
 .other-students-picker { /* 學生懸浮框產生的其他學生懸浮框 */
   display: grid;
+  width: 130px;
+  max-width: min(220px, calc(100vw - 32px));
   grid-template-columns: 1fr;
   left: 50%; /* 左右置中 */
   transform: translateX(-50%); /* 左右置中 */
@@ -715,8 +722,6 @@ body:has(.daily-activity-page) {
   grid-row: 1;
   grid-column: 1;
 }
-
-
 
 .seat-picker-layout.seat-layout-left .seat-stage-actions {
   display: grid;
@@ -2216,12 +2221,15 @@ body:has(.daily-activity-page) {
 
 .hour-record-students-field,
 .hour-record-hours-field,
-.hour-record-filter-field {
+.hour-record-filter-field,
+.hour-record-filter-activity-field {
   position: relative;
 }
 
 .hour-record-filter-field {
   margin-top: 7px;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .hour-record-students-field .seat-picker-trigger {
@@ -2430,7 +2438,7 @@ body:has(.daily-activity-page) {
   font-weight: 700;
   min-height: 36px;
 
-  width: 75px;
+  max-width: 200px;
   z-index: 4;
 }
 

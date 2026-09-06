@@ -55,6 +55,8 @@ renderParticipantField config =
         # Array.filter (\volunteer -> Array.elem volunteer.id config.selectedParticipantIds)
         # map _.name
         # String.joinWith ", "
+
+    itemRenderFunc student = HH.text (volunteerWithGrade student)
   in
     HH.div
       [ HP.classes
@@ -110,8 +112,10 @@ renderParticipantField config =
                         { items: volunteersWithoutSeat
                         , selectedIds: config.selectedParticipantIds
                         , itemId: _.id
-                        , renderLabel: volunteerWithGrade
+                        , renderBar: HH.div_ [] -- 選項前的橫條
+                        , itemRenderFunc: itemRenderFunc
                         , onToggle: config.onToggleDraftParticipants
+                        , noItemsLabel: "沒有其他學生"
                         }
                     else
                       HH.text ""

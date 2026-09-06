@@ -9,22 +9,26 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 
-type MultiSelectConfig item action
+type MultiSelectConfig item action slots m
   = { items :: Array item
     , selectedIds :: Array Int
     , itemId :: item -> Int
-    , renderLabel :: item -> String
+    , renderBar :: H.ComponentHTML action slots m -- 選項前的橫條
+    , itemRenderFunc :: item -> H.ComponentHTML action slots m
     , onToggle :: Int -> action
+    , noItemsLabel :: String
     }
 
-renderMultiSelect :: forall item action slots m. MultiSelectConfig item action -> H.ComponentHTML action slots m
+renderMultiSelect :: forall item action slots m. MultiSelectConfig item action slots m -> H.ComponentHTML action slots m
 renderMultiSelect config =
   HH.div
     [ HP.class_ (HH.ClassName "other-students-picker") ]
-    if Array.null config.items then
-      [ HH.p_ [ HH.text "沒有其他學生" ] ]
-    else
-      map renderOption config.items
+    ( [ config.renderBar ]
+        <> if Array.null config.items then
+            [ HH.p_ [ HH.text config.noItemsLabel ] ]
+          else
+            map renderOption config.items
+    )
   where
   renderOption item =
     let
@@ -40,4 +44,4 @@ renderMultiSelect config =
             )
         , HE.onClick \_ -> config.onToggle id
         ]
-        [ HH.text (config.renderLabel item) ]
+        [ config.itemRenderFunc item ]

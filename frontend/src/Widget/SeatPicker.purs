@@ -1,5 +1,6 @@
 module Widget.SeatPicker
   ( renderSeatPickerLayout
+  , renderStageAction
   ) where
 
 import Prelude
