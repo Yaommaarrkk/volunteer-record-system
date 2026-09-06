@@ -144,9 +144,9 @@ render state =
                     (Array.range 5 15)
                 )
             )
-        , seatField Year114SecondSemester state.seat114SecondSemester state.openSeatPicker
-        , seatField Year115Summer state.seat115Summer state.openSeatPicker
-        , seatField Year115FirstSemester state.seat115FirstSemester state.openSeatPicker
+        , seatField Year114SecondSemester state.seat114SecondSemester state.openSeatPicker "floating-panel-left0"
+        , seatField Year115Summer state.seat115Summer state.openSeatPicker "floating-panel-left50pct"
+        , seatField Year115FirstSemester state.seat115FirstSemester state.openSeatPicker "floating-panel-right0"
         , HH.button
             [ HP.class_ (HH.ClassName "student-submit")
             , HP.disabled state.isSubmitting
@@ -161,11 +161,7 @@ render state =
         ]
     ]
 
-formField ::
-  forall m.
-  String ->
-  H.ComponentHTML Action Slots m ->
-  H.ComponentHTML Action Slots m
+formField :: forall m. String -> H.ComponentHTML Action Slots m -> H.ComponentHTML Action Slots m
 formField label control =
   HH.label
     [ HP.class_ (HH.ClassName "form-field") ]
@@ -173,52 +169,48 @@ formField label control =
     , control
     ]
 
-seatField ::
-  forall m.
-  SeatPeriodType ->
-  Maybe Seat ->
-  Maybe SeatPeriodType ->
-  H.ComponentHTML Action Slots m
-seatField period selectedSeat openSeatPicker =
+seatField :: forall m. SeatPeriodType -> Maybe Seat -> Maybe SeatPeriodType -> String -> H.ComponentHTML Action Slots m
+seatField period selectedSeat openSeatPicker floatingPanelCss =
   HH.div
-    [ HP.classes
-        ( [ HH.ClassName "form-field"
-          , HH.ClassName "seat-field"
-          ]
-            <> if openSeatPicker == Just period then
-                [ HH.ClassName "seat-picker-open" ]
-              else
-                []
-        )
-    ]
+    [ HP.class_ (HH.ClassName "form-field") ]
     [ HH.span_ [ HH.text (displayName period <> "座位") ]
-    , HH.button
-        [ HP.class_ (HH.ClassName "seat-picker-trigger")
-        , HE.onClick \_ -> ToggleSeatPicker period
-        ]
-        [ HH.text (showSeat selectedSeat) ]
     , HH.div
-        [ HP.classes
-            [ HH.ClassName "seat-picker" ]
-        ]
-        [ renderSeatPickerLayout
-            period
-            [ { action: ClearSeat period
-              , btnLabel: "清除"
-              , class_: Just "seat-clear-button"
-              }
+        [ HP.class_ (HH.ClassName "master-data-add-seat-students-field") ]
+        [ HH.div
+            [ HP.classes
+                ( if openSeatPicker == Just period then
+                    [ HH.ClassName "seat-picker-open" ]
+                  else
+                    []
+                )
             ]
-            (renderSingleSelectSeat selectedSeat (SelectSeat period))
+            [ HH.button
+                [ HP.class_ (HH.ClassName "seat-picker-trigger")
+                , HE.onClick \_ -> ToggleSeatPicker period
+                ]
+                [ HH.text (showSeat selectedSeat) ]
+            , HH.div
+                [ HP.classes
+                    [ HH.ClassName "seat-picker"
+                    , HH.ClassName floatingPanelCss
+                    ]
+                ]
+                [ renderSeatPickerLayout
+                    period
+                    [ { action: ClearSeat period
+                      , btnLabel: "清除"
+                      , class_: Just "seat-clear-button"
+                      }
+                    ]
+                    (renderSingleSelectSeat selectedSeat (SelectSeat period))
+                ]
+            ]
         ]
     ]
 
-handleAction ::
-  forall m.
-  MonadEffect m =>
-  Action ->
-  H.HalogenM State Action Slots Output m Unit
+handleAction :: forall m. MonadEffect m => Action -> H.HalogenM State Action Slots Output m Unit
 handleAction = case _ of
-  Initialize -> void $ H.subscribe (CloseSeatPicker <$ OutsideClick.outsideClickEmitter ".seat-field")
+  Initialize -> void $ H.subscribe (CloseSeatPicker <$ OutsideClick.outsideClickEmitter ".form-field")
   SetEducationLevel value -> H.modify_ _ { educationLevel = educationLevelFromApi value }
   SetName name -> H.modify_ _ { name = name, nameError = Nothing }
   SetAge value -> case Int.fromString value of

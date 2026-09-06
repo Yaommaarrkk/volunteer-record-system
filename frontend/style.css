@@ -492,24 +492,58 @@ body:has(.daily-activity-page) {
   transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
 }
 
-.seat-field .seat-picker{
-  left: 50%; /* 左右置中 */
-  transform: translateX(-50%); /* 左右置中 */
+.master-data-add-seat-students-field, /* 添加學生 - 座位選擇塊 */
+.master-data-edit-seat-field, /* 學生清單 - 座位修改塊 */
+.hour-record-students-field, /* 登錄時數條 - 參與學生塊 */
+.hour-record-hours-field, /* 登錄時數條 - 時數塊 */
+.hour-record-filter-field, /* 登錄歷史 - 篩選學生塊 */
+.hour-record-filter-activity-field { /* 登錄歷史 - 篩選活動塊 */
+  position: relative;
+}
+
+.hour-record-filter-field {
+  margin-top: 7px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.master-data-add-seat-students-field .seat-picker-trigger {
+  width: 140px;
+}
+
+.hour-record-students-field .seat-picker-trigger {
+  width: 320px;
+}
+
+.hour-record-filter-field .seat-picker-trigger {
+  max-width: 240px;
+}
+
+.hour-record-hours-field .seat-picker-trigger {
+  width: 112px;
 }
 
 .master-data-students-page .seat-picker, /* 添加學生 - 座位選擇懸浮框 */
 .hour-record-page .seat-picker, /* 登錄時數條 - 參與學生懸浮框 */
 .hour-record-page .hour-record-hours-picker { /* 登錄時數條 - 時數懸浮框 */
   pointer-events: auto;
-  transform: translateY(0);
   z-index: 3;
 }
 
-
+.floating-panel-left0, /* 懸浮框需要靠左的 */
 .hour-record-filter-field .seat-picker, /* 登錄歷史 - 篩選學生懸浮框 */
 .hour-record-filter-activity-field .other-students-picker { /* 登錄歷史 - 篩選活動懸浮框 */
   left: 0; /* 左對齊 */
   transform: none; /* 左對齊 */
+}
+
+.floating-panel-left50pct { /* 懸浮框需要置中的 */
+  left: 50%; /* 左右置中 */
+  transform: translateX(-50%); /* 左右置中 */
+}
+
+.floating-panel-right0 { /* 懸浮框需要靠右 */
+  right: 0; /* 右對齊 */
 }
 
 .hour-record-filter-activity-field .other-students-picker { /* 登錄歷史 - 篩選活動懸浮框 */
@@ -2219,30 +2253,7 @@ body:has(.daily-activity-page) {
   accent-color: #25796b;
 }
 
-.hour-record-students-field,
-.hour-record-hours-field,
-.hour-record-filter-field,
-.hour-record-filter-activity-field {
-  position: relative;
-}
 
-.hour-record-filter-field {
-  margin-top: 7px;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.hour-record-students-field .seat-picker-trigger {
-  width: 320px;
-}
-
-.hour-record-filter-field .seat-picker-trigger {
-  max-width: 240px;
-}
-
-.hour-record-hours-field .seat-picker-trigger {
-  width: 112px;
-}
 
 .hour-record-hours-picker > input {
   width: 100%;

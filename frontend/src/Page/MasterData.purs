@@ -134,7 +134,7 @@ render state = case state.masterDataType of
 renderStudents :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
 renderStudents state =
   HH.main
-    [ HP.class_ (HH.ClassName "master-data-page") ]
+    [ HP.class_ (HH.ClassName "master-data-page master-data-students-page") ]
     [ renderNotice state.notice
     , HH.header
         [ HP.class_ (HH.ClassName "master-data-header") ]
@@ -165,7 +165,7 @@ renderStudents state =
 renderActivities :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
 renderActivities state =
   HH.main
-    [ HP.class_ (HH.ClassName "master-data-page") ]
+    [ HP.class_ (HH.ClassName "master-data-page master-data-activities-page") ]
     [ renderNotice state.notice
     , HH.header
         [ HP.class_ (HH.ClassName "master-data-header") ]
