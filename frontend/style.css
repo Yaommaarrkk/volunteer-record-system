@@ -999,11 +999,8 @@ body:has(.daily-activity-page) {
   border-radius: 12px;
 }
 
-.student-table-scroll.seat-picker-active {
-  overflow: visible;
-}
-
 .student-table {
+  max-width: calc(100vw - 32px);
   width: 100%;
   border-collapse: collapse;
   text-align: left;
