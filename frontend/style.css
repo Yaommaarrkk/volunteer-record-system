@@ -2845,42 +2845,20 @@ body:has(.daily-activity-page) {
   /* Mobile端懸浮框樣式：上下左右置中，不預留空間 */
   .seat-picker,
   .table-seat-picker,
-  .hour-record-hours-picker {
-    position: fixed !important;
-    top: 50%;
-    left: 50%;
-    max-width: calc(100vw - 32px);
-    width: auto;
-    transform: translate(-50%, -50%);
-    z-index: 300;
-    max-height: calc(100vh - 32px);
-    overflow-y: auto;
-  }
-
-  .hour-record-seat-picker {
-    position: fixed !important;
-    top: 50% !important;;
-    left: 50% !important;;
-    max-width: calc(100vw - 32px);
-    width: auto;
-    transform: translate(-50%, -50%) !important;;
-    z-index: 300;
-    max-height: calc(100vh - 32px);
-    overflow-y: auto;
-    right: auto;
-  }
-
-  /* 篩選活動的多選選項容器 */
+  .hour-record-hours-picker,
+  .hour-record-seat-picker,
   .hour-record-filter-activity-field .other-students-picker {
     position: fixed !important;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    max-width: calc(100vw - 32px);
+    width: auto;
+    transform: translate(-50%, -50%) !important;
+    z-index: 300;
     max-height: calc(100vh - 32px);
     overflow-y: auto;
-    z-index: 300;
   }
-}
 
 @media (min-width: 721px) and (max-width: 980px) {
   .student-form-grid {
