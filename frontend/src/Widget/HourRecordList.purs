@@ -577,7 +577,15 @@ renderActivityFilter state =
               <> if state.isActivityFilterOpen then [ HH.ClassName "seat-picker-open" ] else []
           )
       ]
-      [ HH.button
+      [ if state.isActivityFilterOpen then
+          HH.div
+            [ HP.class_ (HH.ClassName "floating-panel-backdrop")
+            , HE.onClick \_ -> ToggleActivityFilter
+            ]
+            []
+        else
+          HH.text ""
+      , HH.button
           [ HP.class_ (HH.ClassName "seat-picker-trigger")
           , HE.onClick \_ -> ToggleActivityFilter
           ]

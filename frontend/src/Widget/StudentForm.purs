@@ -184,7 +184,15 @@ seatField period selectedSeat openSeatPicker floatingPanelCss =
                     []
                 )
             ]
-            [ HH.button
+            [ if openSeatPicker == Just period then
+                HH.div
+                  [ HP.class_ (HH.ClassName "floating-panel-backdrop")
+                  , HE.onClick \_ -> ToggleSeatPicker period
+                  ]
+                  []
+              else
+                HH.text ""
+            , HH.button
                 [ HP.class_ (HH.ClassName "seat-picker-trigger")
                 , HE.onClick \_ -> ToggleSeatPicker period
                 ]

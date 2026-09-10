@@ -228,11 +228,24 @@ render state =
             )
         , HH.div
             [ HP.classes
-                [ HH.ClassName "form-field"
-                , HH.ClassName "hour-record-hours-field"
-                ]
+                ( [ HH.ClassName "form-field"
+                  , HH.ClassName "hour-record-hours-field"
+                  ]
+                    <> if state.isHoursPickerOpen then
+                        [ HH.ClassName "hours-picker-open" ]
+                      else
+                        []
+                )
             ]
-            [ HH.span_ [ HH.text "時數" ]
+            [ if state.isHoursPickerOpen then
+                HH.div
+                  [ HP.class_ (HH.ClassName "floating-panel-backdrop")
+                  , HE.onClick \_ -> CloseHoursPicker
+                  ]
+                  []
+              else
+                HH.text ""
+            , HH.span_ [ HH.text "時數" ]
             , HH.button
                 [ HP.class_ (HH.ClassName "seat-picker-trigger")
                 , HE.onClick \_ -> OpenHoursPicker

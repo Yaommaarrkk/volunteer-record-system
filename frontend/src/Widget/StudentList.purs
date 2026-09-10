@@ -48,6 +48,7 @@ type State
     , isSeatPickerOpen :: Boolean
     , pendingDelete :: Maybe Volunteer
     , pendingAcademicYear :: Boolean
+    , openSeatPicker :: Boolean
     }
 
 data SortMode
@@ -115,6 +116,7 @@ component =
           , isSeatPickerOpen: false
           , pendingDelete: Nothing
           , pendingAcademicYear: false
+          , openSeatPicker: false
           }
     , render
     , eval:
@@ -380,14 +382,39 @@ renderSeatCell state isEditing volunteer =
     if isEditing && isEditingField EditingSeat state.editingField then
       [ HH.div
           [ HP.class_ (HH.ClassName "student-seat-editor") ]
-          [ HH.div
+          [ if state.isSeatPickerOpen then
+              HH.div
+                [ HP.class_ (HH.ClassName "floating-panel-backdrop")
+                , HE.onClick \_ -> CloseSeatPicker
+                ]
+                []
+            else
+              HH.text ""
+          , HH.div
               [ HP.class_ (HH.ClassName "student-inline-editor") ]
-              [ HH.button
-                  [ HP.class_ (HH.ClassName "student-seat-picker-trigger")
-                  , HE.onClick \_ -> OpenSeatPicker
+              [ HH.div
+                  [ HP.classes
+                      ( if state.openSeatPicker then
+                          [ HH.ClassName "seat-picker-open" ]
+                        else
+                          []
+                      )
                   ]
-                  [ HH.text (showSeat state.draftSeat) ]
-              , renderEditActions "座位" (SubmitSeat volunteer.id)
+                  [ if state.openSeatPicker then
+                      HH.div
+                        [ HP.class_ (HH.ClassName "floating-panel-backdrop")
+                        , HE.onClick \_ -> CloseSeatPicker
+                        ]
+                        []
+                    else
+                      HH.text ""
+                  , HH.button
+                      [ HP.class_ (HH.ClassName "student-seat-picker-trigger")
+                      , HE.onClick \_ -> OpenSeatPicker
+                      ]
+                      [ HH.text (showSeat state.draftSeat) ]
+                  , renderEditActions "座位" (SubmitSeat volunteer.id)
+                  ]
               ]
           , if state.isSeatPickerOpen then
               renderSeatPicker state.draftSeat state.selectedSeatPeriod

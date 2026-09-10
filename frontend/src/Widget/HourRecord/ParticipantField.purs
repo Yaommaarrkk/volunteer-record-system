@@ -69,7 +69,15 @@ renderParticipantField config =
                 else
                   []
       ]
-      [ HH.button
+      [ if config.isSeatPickerOpen then
+          HH.div
+            [ HP.class_ (HH.ClassName "floating-panel-backdrop")
+            , HE.onClick \_ -> config.onToggleSeatPicker
+            ]
+            []
+        else
+          HH.text ""
+      , HH.button
           [ HP.class_ (HH.ClassName "seat-picker-trigger")
           , HE.onClick \_ -> config.onToggleSeatPicker
           ]

@@ -482,7 +482,7 @@ body:has(.daily-activity-page) {
   top: calc(100% + 6px);
   max-width: 800px;
   position: absolute; /* 漂浮 */
-  z-index: 3;
+  z-index: 300;
   padding: 16px;
   border: 1px solid #c8d7d2;
   border-radius: 14px;
@@ -490,6 +490,18 @@ body:has(.daily-activity-page) {
   box-shadow: 0 18px 40px rgba(31, 84, 74, 0.18);
   visibility: hidden;
   transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+}
+
+/* Mobile端懸浮框背景遮罩 */
+.floating-panel-backdrop {
+  position: fixed;
+  z-index: 180;
+  inset: 0;
+  background: rgba(20, 43, 38, 0.48);
+  transition: opacity 140ms ease;
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
 }
 
 .master-data-add-seat-students-field, /* 添加學生 - 座位選擇塊 */
@@ -527,7 +539,7 @@ body:has(.daily-activity-page) {
 .hour-record-page .seat-picker, /* 登錄時數條 - 參與學生懸浮框 */
 .hour-record-page .hour-record-hours-picker { /* 登錄時數條 - 時數懸浮框 */
   pointer-events: auto;
-  z-index: 3;
+  z-index: 300;
 }
 
 .floating-panel-left0, /* 懸浮框需要靠左的 */
@@ -570,7 +582,7 @@ body:has(.daily-activity-page) {
 }
 
 .seat-picker-open .seat-picker,
-.hour-record-hours-field .hours-picker-open {
+.hour-record-hours-field.hours-picker-open .hour-record-hours-picker {
   visibility: visible;
 }
 
@@ -1893,7 +1905,7 @@ body:has(.daily-activity-page) {
 
 .activity-tag-wrapper {
   position: relative;
-  z-index: 181;
+  z-index: 300;
 }
 
 .activity-type-tag {
@@ -1918,7 +1930,7 @@ body:has(.daily-activity-page) {
 
 .activity-color-picker {
   position: absolute;
-  z-index: 181;
+  z-index: 30;
   top: calc(100% + 8px);
   left: 0;
   display: grid;
@@ -2048,7 +2060,6 @@ body:has(.daily-activity-page) {
 
 .student-seat-editor {
   position: relative;
-  z-index: 181;
   white-space: normal;
 }
 
@@ -2066,14 +2077,14 @@ body:has(.daily-activity-page) {
 
 .table-seat-picker-backdrop {
   position: fixed;
-  z-index: 180;
+  z-index: 300;
   inset: 0;
   background: rgba(20, 43, 38, 0.12);
 }
 
 .table-seat-picker {
   position: absolute;
-  z-index: 181;
+  z-index: 30;
   top: calc(100% + 8px);
   right: 0;
   width: 270px;
@@ -2823,7 +2834,7 @@ body:has(.daily-activity-page) {
   .hour-record-seat-picker {
     right: auto;
     left: 0;
-    width: min(440px, calc(100vw - 60px));
+    width: calc(100vw - 32px);
   }
 
   .hour-record-list-actions {
@@ -2831,9 +2842,43 @@ body:has(.daily-activity-page) {
     flex-direction: column;
   }
 
-  .seat-picker {
-    position: static;
-    width: 100%;
+  /* Mobile端懸浮框樣式：上下左右置中，不預留空間 */
+  .seat-picker,
+  .table-seat-picker,
+  .hour-record-hours-picker {
+    position: fixed !important;
+    top: 50%;
+    left: 50%;
+    max-width: calc(100vw - 32px);
+    width: auto;
+    transform: translate(-50%, -50%);
+    z-index: 300;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+
+  .hour-record-seat-picker {
+    position: fixed !important;
+    top: 50% !important;;
+    left: 50% !important;;
+    max-width: calc(100vw - 32px);
+    width: auto;
+    transform: translate(-50%, -50%) !important;;
+    z-index: 300;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    right: auto;
+  }
+
+  /* 篩選活動的多選選項容器 */
+  .hour-record-filter-activity-field .other-students-picker {
+    position: fixed !important;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    z-index: 300;
   }
 }
 
