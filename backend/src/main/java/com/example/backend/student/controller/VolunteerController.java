@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.CrossOrigin;
 
-import com.example.backend.student.domain.Volunteer;
 import com.example.backend.student.domain.SeatPeriod;
+import com.example.backend.student.domain.Volunteer;
 import com.example.backend.student.dto.request.CreateVolunteerRequest;
 import com.example.backend.student.dto.request.UpdateAllVolunteerAgeRequest;
 import com.example.backend.student.dto.request.UpdateVolunteerAgeRequest;
