@@ -1,6 +1,7 @@
-package com.example.backend.user.controller;
+package com.example.backend.auth.controller;
 
 import java.util.Optional;
+import io.vavr.control.Either;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -18,35 +19,46 @@ import com.example.backend.user.domain.User;
 import com.example.backend.user.dto.request.UpdatePasswordRequest;
 import com.example.backend.user.repository.UserRepository;
 import com.example.backend.user.service.UserService;
+
+import io.vavr.control.Either;
+
+import com.example.backend.auth.dto.request.RegisterRequest;
+import com.example.backend.auth.dto.response.AuthResponse;
+import com.example.backend.auth.dto.response.UserDto;
 import com.example.backend.common.dto.response.Response;
 import com.example.backend.common.util.ApiResponse;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api")
+@RequestMapping("/api/auth")
 @CrossOrigin(origins = {
         "http://127.0.0.1:3000",
         "http://localhost:3000",
         "https://user-record-system-frontend.onrender.com"
 })
-public class UserController {
+public class AuthController {
 
     private final UserRepository userRepository;
     private final UserService userService;
 
-    @GetMapping("/user/{name}")
-    public ResponseEntity<Response<User>> getUser(@PathVariable String name) {
-        Optional<User> maybeUser = userRepository.findByUsername(name);
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
+        
+        Either<String, User> result = userService.createUser(request.username(), request.password(), request.role());
 
-        if (maybeUser.isPresent()) {
-            return ResponseEntity.ok(ApiResponse.success(maybeUser.get()));
+        if (result.isRight()) { // 成功
+            User user = result.get();
+            UserDto userDto = UserDto.fromUser(user);
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(AuthResponse.from("註冊成功", userDto));
+        } else { // 失敗
+            String errMsg = result.getLeft();
+            return ResponseEntity
+                    .badRequest()
+                    .body(AuthResponse.fromError(errMsg));
         }
-
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.fail("使用者: <" + name + "> 不存在"));
-
     }
 
     // @GetMapping("/users")
@@ -57,15 +69,15 @@ public class UserController {
     //     );
     // }
 
-    @PatchMapping("/user/{id}/password")
-    public ResponseEntity<Response<Void>> updatePassword(
-        @PathVariable Long id,
-        @RequestBody UpdatePasswordRequest request
-    ) {
-        userService.updatePassword(id, request);
+    // @PatchMapping("/{id}/password")
+    // public ResponseEntity<Response<Void>> updatePassword(
+    //     @PathVariable Long id,
+    //     @RequestBody UpdatePasswordRequest request
+    // ) {
+    //     userService.updatePassword(id, request);
 
-        return ResponseEntity.ok(ApiResponse.success("修改學年(所有學生age)成功", null));
-    }
+    //     return ResponseEntity.ok(ApiResponse.success("修改學年(所有學生age)成功", null));
+    // }
 
     // @DeleteMapping("/user/{id}")
     // public ResponseEntity<Response<Void>> deleteUser(@PathVariable Integer id) {

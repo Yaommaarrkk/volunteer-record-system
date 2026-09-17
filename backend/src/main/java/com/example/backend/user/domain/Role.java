@@ -1,8 +1,8 @@
 package com.example.backend.user.domain;
 
 public enum Role {
-    SUPER_ADMIN,
-    VIP_USER,
-    USER,
-    VISITOR
+    super_admin,
+    vip_user,
+    user,
+    visitor
 }

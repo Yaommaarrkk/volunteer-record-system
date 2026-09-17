@@ -1,5 +1,6 @@
 package com.example.backend.user.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -30,19 +31,20 @@ public class UserRepository {
         return Math.toIntExact(id);
     }
 
-    public int insert(User user) {
+    public LocalDateTime insert(User user) {
         String sql = """
-            INSERT INTO users (id, username, password_hash, role, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO users (id, username, password_hash, role)
+            VALUES (?, ?, ?, ?)
+            RETURNING created_at
             """;
 
-        return jdbcTemplate.update(
+        return jdbcTemplate.queryForObject(
             sql,
+            LocalDateTime.class, // RETURNING參數型別
             user.getId(),
             user.getUsername(),
             user.getPasswordHash(),
-            user.getRole().name(),
-            user.getCreatedAt()
+            user.getRole().name()
         );
     }
 

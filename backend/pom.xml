@@ -58,6 +58,12 @@
             <version>5.4.1</version>
         </dependency>
         <dependency>
+            <!-- Either -->
+            <groupId>io.vavr</groupId>
+            <artifactId>vavr</artifactId>
+            <version>0.10.4</version>
+        </dependency>
+        <dependency>
             <!-- 登入/註冊 -->
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
