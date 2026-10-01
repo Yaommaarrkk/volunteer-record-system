@@ -18,6 +18,8 @@
 - `id`：學生編號
 - `name`
 - `age`：前端轉換成年級顯示
+- `birthday_month`：生日月份，可為 `NULL`，範圍 1–12
+- `birthday_day`：生日日期，可為 `NULL`，範圍 1–31
 - `created_at`
 - `updated_at`
 
@@ -109,6 +111,7 @@ SQL 放在 `backend/sql/`。目前這些檔案記錄專案演進過程中的手�
 - 執行前先查看目標資料庫目前有哪些 table、column、constraint、sequence 與 trigger。
 - SQL 發生錯誤時，確認 transaction 是否已 rollback，再處理下一步。
 - 不要在本機成功後就假設 Neon 也完成；兩邊要分別檢查。
+- `add_volunteer_birthday.sql` 記錄生日欄位的新增 SQL。已手動執行過這段 SQL 的資料庫不要重跑；尚未更新的資料庫需執行一次。
 
 ## 備份
 

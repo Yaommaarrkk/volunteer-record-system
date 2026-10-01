@@ -18,6 +18,8 @@ public class VolunteerRepository {
                         resultSet.getInt("id"),
                         resultSet.getString("name"),
                         resultSet.getInt("age"),
+                        resultSet.getObject("birthday_month", Integer.class),
+                        resultSet.getObject("birthday_day", Integer.class),
                         resultSet.getTimestamp("updated_at").toInstant()
                 );
             };
@@ -50,7 +52,7 @@ public class VolunteerRepository {
 
     public List<Volunteer> getAll() {
         String sql = """
-            SELECT id, name, age, updated_at
+            SELECT id, name, age, birthday_month, birthday_day, updated_at
             FROM volunteer
             ORDER BY age, name
             """;
@@ -63,7 +65,7 @@ public class VolunteerRepository {
     public Volunteer findByName(String name) {
         // 傳變數進去 用'?'代替 變數則接在query的第三個參數
         String sql = """
-            SELECT id, name, age, updated_at
+            SELECT id, name, age, birthday_month, birthday_day, updated_at
             FROM volunteer
             WHERE name = ?
             """;
@@ -106,15 +108,17 @@ public class VolunteerRepository {
     public int insert(Volunteer volunteer) {
         // 傳變數進去 用'?'代替 變數則接在query的第三個參數
         String sql = """
-            INSERT INTO volunteer (id, name, age)
-            VALUES (?, ?, ?)
+            INSERT INTO volunteer (id, name, age, birthday_month, birthday_day)
+            VALUES (?, ?, ?, ?, ?)
             """;
 
         int insertedRows = jdbcTemplate.update(
                 sql,
                 volunteer.getId(),
                 volunteer.getName(),
-                volunteer.getAge()
+                volunteer.getAge(),
+                volunteer.getBirthdayMonth(),
+                volunteer.getBirthdayDay()
         );
 
         String seatSql = """
@@ -186,6 +190,16 @@ public class VolunteerRepository {
             """;
 
         return jdbcTemplate.update(sql, age, id);
+    }
+
+    public int updateBirthday(Integer id, Integer month, Integer day) {
+        String sql = """
+            UPDATE volunteer
+            SET birthday_month = ?, birthday_day = ?
+            WHERE id = ?
+            """;
+
+        return jdbcTemplate.update(sql, month, day, id);
     }
 
     public boolean existsById(Integer id) {

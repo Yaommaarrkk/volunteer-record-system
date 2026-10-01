@@ -24,6 +24,7 @@
 | DELETE | `/api/volunteer/{id}` | 刪除沒有時數紀錄的學生 |
 | PATCH | `/api/volunteer/{id}/name` | 修改姓名 |
 | PATCH | `/api/volunteer/{id}/age` | 修改年齡／年級資料 |
+| PATCH | `/api/volunteer/{id}/birthday` | 修改生日（月日可同時清空） |
 | PATCH | `/api/volunteer/{id}/seat/{period}` | 新增、修改或清除指定學期座位 |
 
 新增學生範例：
@@ -33,6 +34,8 @@
   "educationLevel": "ELEMENTARY_SCHOOL",
   "name": "王小明",
   "age": 9,
+  "birthdayMonth": 3,
+  "birthdayDay": 15,
   "seats": [
     {
       "period": "YEAR_114_SECOND_SEMESTER",
@@ -53,6 +56,8 @@
   "col": null
 }
 ```
+
+生日月份與日期可同時設為 `null` 表示未填；填寫時月份需為 1–12、日期需為 1–31。更新生日的請求格式與新增學生中的兩個欄位相同。
 
 ## 活動
 

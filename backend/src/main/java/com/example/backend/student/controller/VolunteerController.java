@@ -20,6 +20,7 @@ import com.example.backend.student.domain.SeatPeriod;
 import com.example.backend.student.dto.request.CreateVolunteerRequest;
 import com.example.backend.student.dto.request.UpdateAllVolunteerAgeRequest;
 import com.example.backend.student.dto.request.UpdateVolunteerAgeRequest;
+import com.example.backend.student.dto.request.UpdateVolunteerBirthdayRequest;
 import com.example.backend.student.dto.request.UpdateVolunteerNameRequest;
 import com.example.backend.student.dto.request.UpdateVolunteerSeatRequest;
 import com.example.backend.student.repository.VolunteerRepository;
@@ -65,11 +66,26 @@ public class VolunteerController {
     @PostMapping("/volunteer")
     public ResponseEntity<Response<Void>> createVolunteer(@RequestBody CreateVolunteerRequest request) {
         try {
+            Integer birthdayMonth = request.birthdayMonth();
+            Integer birthdayDay = request.birthdayDay();
+            boolean bothBirthdayFieldsEmpty = birthdayMonth == null && birthdayDay == null;
+            boolean bothBirthdayFieldsValid = birthdayMonth != null && birthdayDay != null
+                    && birthdayMonth >= 1 && birthdayMonth <= 12
+                    && birthdayDay >= 1 && birthdayDay <= 31;
+            if (!bothBirthdayFieldsEmpty && !bothBirthdayFieldsValid) {
+                return ResponseEntity
+                        .status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.fail("生日月份與日期需同時填寫，月份為 1–12、日期為 1–31"));
+            }
+
             Integer id = volunteerRepository.nextId(request.educationLevel());
             Volunteer volunteer = new Volunteer(
                     id,
                     request.name(),
-                    request.age()
+                    request.age(),
+                    request.birthdayMonth(),
+                    request.birthdayDay(),
+                    null
             );
 
             if (request.seats() != null) {
@@ -182,6 +198,31 @@ public class VolunteerController {
         }
 
         return ResponseEntity.ok(ApiResponse.success("修改年級成功", null));
+    }
+
+    @PatchMapping("/volunteer/{id}/birthday")
+    public ResponseEntity<Response<Void>> updateVolunteerBirthday(
+            @PathVariable Integer id,
+            @RequestBody UpdateVolunteerBirthdayRequest request
+    ) {
+        Integer month = request.birthdayMonth();
+        Integer day = request.birthdayDay();
+        boolean bothEmpty = month == null && day == null;
+        boolean bothPresentAndValid = month != null && day != null
+                && month >= 1 && month <= 12 && day >= 1 && day <= 31;
+
+        if (!bothEmpty && !bothPresentAndValid) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.fail("生日月份與日期需同時填寫，月份為 1–12、日期為 1–31"));
+        }
+
+        int updatedRows = volunteerRepository.updateBirthday(id, month, day);
+        if (updatedRows == 0) {
+            return volunteerNotFound(id);
+        }
+
+        return ResponseEntity.ok(ApiResponse.success("更新生日成功", null));
     }
 
     @PatchMapping("/volunteer/{id}/seat/{period}")

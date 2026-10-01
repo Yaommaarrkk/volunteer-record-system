@@ -9,6 +9,8 @@ public record CreateVolunteerRequest(
         EducationLevel educationLevel,
         String name,
         Integer age,
+        Integer birthdayMonth,
+        Integer birthdayDay,
         List<SeatAssignmentRequest> seats
 ) {
     public record SeatAssignmentRequest(

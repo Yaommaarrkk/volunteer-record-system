@@ -8,7 +8,7 @@ module Widget.StudentForm
 import Prelude
 import Data.Array as Array
 import Data.Int as Int
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.String.Common as String
 import Domain.EducationLevel (EducationLevel(..), educationLevelToApi)
 import Domain.Volunteer (SeatAssignment, ageToGradeLabel, showSeat)
@@ -37,6 +37,8 @@ type CreateVolunteerRequest
   = { educationLevel :: String
     , name :: String
     , age :: Int
+    , birthdayMonth :: Maybe Int
+    , birthdayDay :: Maybe Int
     , seats :: Array SeatAssignment
     }
 
@@ -44,6 +46,8 @@ type State
   = { educationLevel :: EducationLevel
     , name :: String
     , age :: Int
+    , birthdayMonth :: Maybe Int
+    , birthdayDay :: Maybe Int
     , seat114SecondSemester :: Maybe Seat
     , seat115Summer :: Maybe Seat
     , seat115FirstSemester :: Maybe Seat
@@ -57,6 +61,8 @@ data Action
   | SetEducationLevel String
   | SetName String
   | SetAge String
+  | SetBirthdayMonth String
+  | SetBirthdayDay String
   | ToggleSeatPicker SeatPeriodType
   | CloseSeatPicker
   | ClearSeat SeatPeriodType
@@ -72,6 +78,8 @@ initialState input =
   { educationLevel: ElementarySchool
   , name: ""
   , age: 7
+  , birthdayMonth: Nothing
+  , birthdayDay: Nothing
   , seat114SecondSemester: Nothing
   , seat115Summer: Nothing
   , seat115FirstSemester: Nothing
@@ -144,6 +152,22 @@ render state =
                     (Array.range 5 15)
                 )
             )
+        , formField "生日月份（選填）"
+            (HH.input
+              [ HP.type_ HP.InputNumber
+              , HP.attr (HH.AttrName "min") "1"
+              , HP.attr (HH.AttrName "max") "12"
+              , HP.value (maybe "" show state.birthdayMonth)
+              , HE.onValueChange SetBirthdayMonth
+              ])
+        , formField "生日日期（選填）"
+            (HH.input
+              [ HP.type_ HP.InputNumber
+              , HP.attr (HH.AttrName "min") "1"
+              , HP.attr (HH.AttrName "max") "31"
+              , HP.value (maybe "" show state.birthdayDay)
+              , HE.onValueChange SetBirthdayDay
+              ])
         , seatField Year114SecondSemester state.seat114SecondSemester state.openSeatPicker "floating-panel-left0"
         , seatField Year115Summer state.seat115Summer state.openSeatPicker "floating-panel-left50pct"
         , seatField Year115FirstSemester state.seat115FirstSemester state.openSeatPicker "floating-panel-right0"
@@ -224,6 +248,8 @@ handleAction = case _ of
   SetAge value -> case Int.fromString value of
     Nothing -> pure unit
     Just age -> H.modify_ _ { age = age }
+  SetBirthdayMonth value -> H.modify_ _ { birthdayMonth = parseOptionalInt value }
+  SetBirthdayDay value -> H.modify_ _ { birthdayDay = parseOptionalInt value }
   ToggleSeatPicker period ->
     H.modify_ \state ->
       state
@@ -254,6 +280,8 @@ handleAction = case _ of
             { educationLevel: educationLevelToApi state.educationLevel
             , name: String.trim state.name
             , age: state.age
+            , birthdayMonth: state.birthdayMonth
+            , birthdayDay: state.birthdayDay
             , seats:
                 Array.catMaybes
                   [ map
@@ -277,3 +305,8 @@ educationLevelFromApi = case _ of
   "SENIOR_HIGH_SCHOOL" -> SeniorHighSchool
   "ADULT" -> Adult
   _ -> ElementarySchool
+
+parseOptionalInt :: String -> Maybe Int
+parseOptionalInt value
+  | String.trim value == "" = Nothing
+  | otherwise = Int.fromString value

@@ -8,6 +8,8 @@ public class Volunteer {
     private Integer id;
     private String name;
     private Integer age;
+    private Integer birthdayMonth;
+    private Integer birthdayDay;
     private Instant updatedAt;
     private final List<SeatAssignment> seats = new ArrayList<>();
 
@@ -53,9 +55,15 @@ public class Volunteer {
     }
 
     public Volunteer(Integer id, String name, Integer age, Instant updatedAt) {
+        this(id, name, age, null, null, updatedAt);
+    }
+
+    public Volunteer(Integer id, String name, Integer age, Integer birthdayMonth, Integer birthdayDay, Instant updatedAt) {
         this.id = id;
         this.name = name;
         this.age = age;
+        this.birthdayMonth = birthdayMonth;
+        this.birthdayDay = birthdayDay;
         this.updatedAt = updatedAt;
     }
 
@@ -70,6 +78,10 @@ public class Volunteer {
     public Integer getAge() {
         return age;
     }
+
+    public Integer getBirthdayMonth() { return birthdayMonth; }
+
+    public Integer getBirthdayDay() { return birthdayDay; }
 
     public Instant getUpdatedAt() {
         return updatedAt;

@@ -288,6 +288,7 @@ handleAction = case _ of
   StudentListOutput (StudentList.UpdateNameRequested id name) -> handleStudentUpdate (updateVolunteerName id name)
   StudentListOutput (StudentList.UpdateAgeRequested id age) -> handleStudentUpdate (updateVolunteerAge id age)
   StudentListOutput (StudentList.UpdateSeatRequested id period seat) -> handleStudentUpdate (updateVolunteerSeat id period seat)
+  StudentListOutput (StudentList.UpdateBirthdayRequested id month day) -> handleStudentUpdate (updateVolunteerBirthday id month day)
   ActivityFormOutput (ActivityForm.SubmitActivity request) -> do
     H.modify_ _ { isSubmitting = true, notice = Nothing }
     result <-
@@ -490,6 +491,13 @@ updateVolunteerSeat id period seat =
       )
       (writeJSON request)
       "修改學生座位"
+
+updateVolunteerBirthday :: Int -> Maybe Int -> Maybe Int -> Aff (Either String String)
+updateVolunteerBirthday id birthdayMonth birthdayDay =
+  patchMutation
+    (apiUrl ("/api/volunteer/" <> show id <> "/birthday"))
+    (writeJSON { birthdayMonth, birthdayDay })
+    "更新生日"
 
 updateActivityName :: Int -> String -> Aff (Either String String)
 updateActivityName id name =

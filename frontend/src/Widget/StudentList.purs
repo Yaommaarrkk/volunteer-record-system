@@ -8,7 +8,7 @@ module Widget.StudentList
 import Prelude
 import Data.Array as Array
 import Data.Int as Int
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.String.Common as String
 import Domain.Volunteer (Volunteer, ageToGradeLabel, formatUpdatedAt, seatForPeriod, showSeat)
 import Domain.Seat (Seat, SeatPeriodType(..), displayName)
@@ -44,6 +44,8 @@ type State
     , editingField :: Maybe EditField
     , draftName :: String
     , draftAge :: Int
+    , draftBirthdayMonth :: Maybe Int
+    , draftBirthdayDay :: Maybe Int
     , draftSeat :: Maybe Seat
     , isSeatPickerOpen :: Boolean
     , pendingDelete :: Maybe Volunteer
@@ -62,6 +64,7 @@ data EditField
   = EditingName
   | EditingAge
   | EditingSeat
+  | EditingBirthday
 
 data Action
   = Initialize
@@ -79,8 +82,11 @@ data Action
   | BeginNameEdit Volunteer
   | BeginAgeEdit Volunteer
   | BeginSeatEdit Volunteer
+  | BeginBirthdayEdit Volunteer
   | SetDraftName String
   | SetDraftAge String
+  | SetDraftBirthdayMonth String
+  | SetDraftBirthdayDay String
   | SelectDraftSeat Seat
   | ClearDraftSeat
   | OpenSeatPicker
@@ -89,6 +95,7 @@ data Action
   | SubmitName Int
   | SubmitAge Int
   | SubmitSeat Int
+  | SubmitBirthday Int
 
 data Output
   = RetryRequested
@@ -97,6 +104,7 @@ data Output
   | UpdateNameRequested Int String
   | UpdateAgeRequested Int Int
   | UpdateSeatRequested Int SeatPeriodType (Maybe Seat)
+  | UpdateBirthdayRequested Int (Maybe Int) (Maybe Int)
 
 component :: forall query m. MonadEffect m => H.Component query Input Output m
 component =
@@ -112,6 +120,8 @@ component =
           , editingField: Nothing
           , draftName: ""
           , draftAge: 7
+          , draftBirthdayMonth: Nothing
+          , draftBirthdayDay: Nothing
           , draftSeat: Nothing
           , isSeatPickerOpen: false
           , pendingDelete: Nothing
@@ -244,6 +254,7 @@ renderVolunteerList state
                   [ HH.th_ [ HH.text "編號" ]
                   , HH.th_ [ HH.text "姓名" ]
                   , HH.th_ [ HH.text "年級" ]
+                  , HH.th_ [ HH.text "生日" ]
                   , HH.th_ [ HH.text "座位" ]
                   , HH.th_ [ HH.text "操作" ]
                   , HH.th_ [ HH.text "修改時間" ]
@@ -292,6 +303,7 @@ renderVolunteer state volunteer =
       [ HH.td_ [ HH.text (show volunteer.id) ]
       , renderNameCell state isEditing volunteer
       , renderAgeCell state isEditing volunteer
+      , renderBirthdayCell state isEditing volunteer
       , renderSeatCell state isEditing volunteer
       , HH.td_
           [ HH.div
@@ -376,6 +388,54 @@ renderAgeCell state isEditing volunteer =
           ]
       ]
 
+renderBirthdayCell :: forall m. State -> Boolean -> Volunteer -> H.ComponentHTML Action Slots m
+renderBirthdayCell state isEditing volunteer =
+  HH.td_
+    if isEditing && isEditingField EditingBirthday state.editingField then
+      [ HH.div
+          [ HP.class_ (HH.ClassName "student-inline-editor") ]
+          [ HH.input
+              [ HP.class_ (HH.ClassName "student-inline-input")
+              , HP.type_ HP.InputNumber
+              , HP.attr (HH.AttrName "min") "1"
+              , HP.attr (HH.AttrName "max") "12"
+              , HP.placeholder "月"
+              , HP.value (maybe "" show state.draftBirthdayMonth)
+              , HE.onValueChange SetDraftBirthdayMonth
+              ]
+          , HH.input
+              [ HP.class_ (HH.ClassName "student-inline-input")
+              , HP.type_ HP.InputNumber
+              , HP.attr (HH.AttrName "min") "1"
+              , HP.attr (HH.AttrName "max") "31"
+              , HP.placeholder "日"
+              , HP.value (maybe "" show state.draftBirthdayDay)
+              , HE.onValueChange SetDraftBirthdayDay
+              ]
+          , renderEditActions "生日" (SubmitBirthday volunteer.id)
+          ]
+      ]
+    else
+      [ HH.div
+          [ HP.class_ (HH.ClassName "student-editable-value") ]
+          [ HH.text (formatBirthday volunteer.birthdayMonth volunteer.birthdayDay)
+          , if isEditing then
+              editIconButton "生日" (BeginBirthdayEdit volunteer)
+            else
+              HH.text ""
+          ]
+      ]
+
+formatBirthday :: Maybe Int -> Maybe Int -> String
+formatBirthday month day = case month, day of
+  Just birthdayMonth, Just birthdayDay -> show birthdayMonth <> "/" <> show birthdayDay
+  _, _ -> "-"
+
+parseOptionalInt :: String -> Maybe Int
+parseOptionalInt value
+  | String.trim value == "" = Nothing
+  | otherwise = Int.fromString value
+
 renderSeatCell :: forall m. State -> Boolean -> Volunteer -> H.ComponentHTML Action Slots m
 renderSeatCell state isEditing volunteer =
   HH.td_
@@ -443,6 +503,9 @@ isEditingField expected = case _ of
     _ -> false
   Just EditingSeat -> case expected of
     EditingSeat -> true
+    _ -> false
+  Just EditingBirthday -> case expected of
+    EditingBirthday -> true
     _ -> false
   Nothing -> false
 
@@ -635,10 +698,21 @@ handleAction = case _ of
         , draftSeat = seatForPeriod state.selectedSeatPeriod volunteer
         , isSeatPickerOpen = true
         }
+  BeginBirthdayEdit volunteer ->
+    H.modify_
+      _
+        { editingVolunteerId = Just volunteer.id
+        , editingField = Just EditingBirthday
+        , draftBirthdayMonth = volunteer.birthdayMonth
+        , draftBirthdayDay = volunteer.birthdayDay
+        , isSeatPickerOpen = false
+        }
   SetDraftName name -> H.modify_ _ { draftName = name }
   SetDraftAge value -> case Int.fromString value of
     Nothing -> pure unit
     Just age -> H.modify_ _ { draftAge = age }
+  SetDraftBirthdayMonth value -> H.modify_ _ { draftBirthdayMonth = parseOptionalInt value }
+  SetDraftBirthdayDay value -> H.modify_ _ { draftBirthdayDay = parseOptionalInt value }
   SelectDraftSeat seat -> H.modify_ _ { draftSeat = Just seat, isSeatPickerOpen = false }
   ClearDraftSeat -> H.modify_ _ { draftSeat = Nothing, isSeatPickerOpen = false }
   OpenSeatPicker -> H.modify_ _ { isSeatPickerOpen = true }
@@ -657,4 +731,8 @@ handleAction = case _ of
   SubmitSeat id -> do
     state <- H.get
     H.raise (UpdateSeatRequested id state.selectedSeatPeriod state.draftSeat)
+    H.modify_ _ { editingField = Nothing, isSeatPickerOpen = false }
+  SubmitBirthday id -> do
+    state <- H.get
+    H.raise (UpdateBirthdayRequested id state.draftBirthdayMonth state.draftBirthdayDay)
     H.modify_ _ { editingField = Nothing, isSeatPickerOpen = false }
